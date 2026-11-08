@@ -28,20 +28,6 @@ Open http://127.0.0.1:5173/ in two separate browser profiles (or different brows
 
 Vite proxies `/ws` to port 8000. To use another backend address, copy `frontend/.env.example` to `frontend/.env.development.local` and set `VITE_WS_URL` (for example, `ws://127.0.0.1:8001/ws`), then run Uvicorn on that port. A localhost invitation works only on the same machine; remote friends need a reachable hosted address.
 
-### Running alongside another app on port 8000
-
-The local poker configuration uses port 8001 when port 8000 is occupied. Start
-its backend from `backend` with:
-
-```sh
-./venv/bin/uvicorn main:app --host 127.0.0.1 --port 8001 --env-file .env
-```
-
-Set `VITE_WS_URL=ws://127.0.0.1:8001/ws` in the ignored
-`frontend/.env.development.local` and run the frontend normally. Check the backend
-at `http://127.0.0.1:8001/health`; Vite's default health proxy still targets 8000.
-`python run.py` continues to use the default port 8000.
-
 ## Gameplay
 
 - Start with 1,000 play chips; blinds are 5/10. Click your nameplate to set your own total stack, including a rebuy. During play, your total and any shared settings edits queue for the next hand. Payouts settle first. Between hands, edits apply immediately.
@@ -56,95 +42,20 @@ at `http://127.0.0.1:8001/health`; Vite's default health proxy still targets 800
 
 ## DynamoDB and budget alerts
 
-The local `backend/.env` selects the checkpoint and history tables and the AWS
-region/profile. `python run.py` loads that ignored file. On a fresh checkout,
-copy `backend/.env.example` to `backend/.env` after deploying both tables, then
-set `DYNAMODB_TABLE` and `DYNAMODB_HISTORY_TABLE` from your stack outputs.
-For direct Uvicorn use, add `--env-file .env` from the backend directory.
-Leave `DYNAMODB_TABLE` empty for memory-only development and automated tests.
-Never put AWS credentials into frontend environment files.
-
-The backend atomically saves its checkpoint and permanent game history before
-acknowledging changes. History includes sessions, identities, chip movements,
-every accepted action/chat entry, hole cards, full shuffled deck order, boards,
-and hand results. The browser keeps its random identity credential across visits;
-seat removal does not delete that player's history. Clearing browser storage loses
-access to the identity; cross-device accounts are not implemented.
-
-Sessions start on the first join and end when everyone disconnects or the backend
-restarts. Reconnects within a session preserve retained stacks; pruned seats start
-at 1,000 again with that entry recorded separately from winnings. On recovery,
-unfinished hands are cancelled and contributions refunded; completed payouts
-remain intact. Schema 1 checkpoints migrate on startup, preserving retained player
-IDs and a baseline of available data. Older actions cannot be reconstructed, and
-old backend versions cannot read the resulting schema 2 checkpoint. If DynamoDB fails, the
-backend stops play and returns HTTP 503 on `/health`; fix connectivity/access and
-restart it. No unsaved game is allowed to continue.
-
-Infrastructure is reproducible from the repository root:
-
-```sh
-aws cloudformation deploy --profile lawang --region us-east-1 \
-  --stack-name headwins-poker-budget --template-file infra/budgets.yaml \
-  --parameter-overrides AlertEmail=YOUR_EMAIL
-aws cloudformation deploy --profile lawang --region us-east-1 \
-  --stack-name YOUR_DATA_STACK --template-file infra/dynamodb.yaml
-```
-
-Both tables are tagged `Project=headwins-poker` and use Standard provisioned
-capacity: **5 RCU / 5 WCU** for checkpoints and **5 RCU / 20 WCU** for history.
-There is no autoscaling or paid backup configuration. Updating the stack retains
-the existing checkpoint table, reduces its write capacity, and adds the archive.
-AWS documents an always-free allowance of 25 RCU, 25 WCU, and 25 GB; this allowance
-is shared with other eligible account usage. The archive grows with play, and transactions plus copied query records consume
-more writes than the original checkpoint-only implementation. Heavy activity can
-throttle saves; retained history is not a backup.
-[DynamoDB free-tier documentation](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html).
-
-Two free monitoring budgets alert when recorded monthly costs exceed **$0.01**:
-`headwins-poker-budget-project` covers the project tag, and
-`headwins-poker-budget-dynamodb` covers all DynamoDB costs, including the period
-before AWS discovers the tag. Credits and refunds are excluded. **Budgets do not
-cap spending**, and billing/notifications are delayed; they cannot guarantee a
-$0 bill. [Budget considerations](https://docs.aws.amazon.com/cost-management/latest/userguide/bcm-lite-use-budget.html).
-
-After AWS exposes `Project` under Billing cost allocation tags (this can take
-24 hours), activate it:
-
-```sh
-aws ce update-cost-allocation-tags-status --profile lawang --region us-east-1 \
-  --cost-allocation-tags-status TagKey=Project,Status=Active
-```
-
-For deployment on AWS, omit `AWS_PROFILE` and attach a workload IAM role granting
-only `dynamodb:GetItem` and `dynamodb:PutItem` on both table ARNs. Transaction
-writes are authorized through the underlying item actions. Give authorized offline
-analysts `dynamodb:Query` on the history table. Keep one backend worker. Both tables
-have deletion protection and CloudFormation retention enabled;
-removing the stack alone does not delete saved data.
+Gameplay runs in memory by default. Optional DynamoDB storage saves the table
+and its history together before players receive an update. On restart, the
+backend refunds contributions from an unfinished hand and preserves completed
+payouts. For local persistence, copy `backend/.env.example` to `backend/.env`,
+set both table names to development tables, and start the server with `python run.py`.
+The [operations guide](docs/architecture/operations.md) describes the
+tables and budget alerts. AWS documents its [DynamoDB free tier](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html)
+and [budget alert limitations](https://docs.aws.amazon.com/cost-management/latest/userguide/bcm-lite-use-budget.html).
 
 ## Exporting history
 
-After deploying the updated stack, configuring both table names, and restarting
-the backend, run these commands from `backend` using an authorized AWS profile:
-
-```sh
-./venv/bin/python export_history.py --sessions --output /tmp/poker-sessions.json
-./venv/bin/python export_history.py --session SESSION_ID --output /tmp/poker-session.json
-./venv/bin/python export_history.py --hand HAND_ID --output /tmp/poker-hand.json
-./venv/bin/python export_history.py --player PLAYER_ID --output /tmp/poker-player.json
-./venv/bin/python export_history.py --system --output /tmp/poker-system.json
-./venv/bin/python export_history.py --feedback --output /tmp/poker-feedback.json
-```
-
-Session events identify players and hands. Player exports include lifetime net
-chips and totals by session, including pot payouts, contributions, and 2–7 transfers. Rebuys,
-stack changes, and cash-outs are separate movement records. Cancelled hands count
-as zero net. Each output must be a new filename and is created with owner-only
-permissions. Hand/session exports include private cards and deck order, so keep
-them outside the repository and away from live players. The CLI loads the local
-backend `.env`; it does not change game state. Equity calculation and a history UI
-are future work; the necessary card/action data is now recorded.
+The [history export CLI](backend/export_history.py) lets authorized operators
+review sessions, hands, player results, system events, and private feedback.
+Hand and session exports contain private cards and deck order.
 
 ## Checks
 
@@ -224,46 +135,3 @@ with mobile viewport simulation, not a physical-phone or real-AWS load test.
 Build the frontend with `npm run build` and serve `frontend/dist`. Proxy `/ws` to Uvicorn with WebSocket upgrade support, or supply an explicit `VITE_WS_URL` at build time. HTTPS pages require `wss://` connections. Run **one backend worker**: live gameplay is not coordinated between processes. `/health` returns `{"status":"ok"}` unless a persistence failure has stopped the game.
 
 This implementation is for casual play-money games. Memory-only mode loses state on restart; DynamoDB mode recovers the saved table. Everyone who opens the app joins the same game; there is no room selection, password, or account system. Account authentication, a history/equity UI, distributed workers, and public-service abuse controls are separate work; no real-money settlement is implemented.
-
-### Feedback
-
-Production uses the Netlify frontend at `https://larrypokernow.netlify.app` and
-the Render backend at `https://headwins-poker.onrender.com`. Set the frontend's
-`VITE_WS_URL` to `wss://headwins-poker.onrender.com/ws` when building it. The
-Render backend needs these environment settings (its Uvicorn command does not
-load the local `.env`):
-
-| Setting | Value |
-| --- | --- |
-| `DYNAMODB_TABLE` | Checkpoint table name from your data stack outputs |
-| `DYNAMODB_HISTORY_TABLE` | History table name from your data stack outputs |
-| `AWS_REGION` | `us-east-1` |
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Dedicated backend credential, stored only in Render |
-
-Provision the backend identity separately from the retained data tables:
-
-```sh
-aws cloudformation deploy --profile lawang --region us-east-1 \
-  --stack-name headwins-poker-render-access \
-  --template-file infra/render-access.yaml --capabilities CAPABILITY_NAMED_IAM \
-  --parameter-overrides DataStackName=YOUR_DATA_STACK
-```
-
-Create an access key for the resulting backend user and transfer it securely to
-Render without printing it or committing it. Preserve existing Render variables
-when configuring the service, then redeploy. Verify `/health`, submit a labeled
-feedback report, and confirm the report appears in the history export. A healthy
-HTTP endpoint alone does not prove storage is enabled. Use separate tables or the
-emulator for local development while production owns these tables.
-
-The corner Feedback button is available before joining, at the table, and in
-Settings. Reports are stored privately in `DYNAMODB_HISTORY_TABLE`, with a server
-UTC timestamp, name, and stable player ID for returning players. Guests provide
-a self-reported name. Both DynamoDB settings must be configured; memory-only mode
-returns an error and preserves the draft. Restart the backend after updating code.
-When serving behind a reverse proxy, enable WebSocket upgrades for `/feedback`
-as well as `/ws`. `VITE_WS_URL` should end in `/ws`; feedback uses the same host
-and path prefix with `/feedback`. Use the `--feedback` export above to review reports.
-Run the focused browser check with
-`PYTHONPATH=.artifacts/e2e/deps backend/venv/bin/python backend/e2e/browser_test.py --feedback-only`
-from the repository root after installing the E2E dependencies.
