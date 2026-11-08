@@ -74,4 +74,4 @@ of each player’s view. The browser never has to simulate the game itself.
 
 This guide describes the implemented system. Original sketches in
 [`diagrams/`](../diagrams/) may differ. When changing the app, review this overview
-and the affected module pages together, as required by [AGENTS.md](../AGENTS.md).
+and the affected module pages together.

@@ -112,7 +112,7 @@ subsequent deals, eligibility, cancellation, and persistence-failure guards.
 
 This guide describes the implemented system. The Excalidraw files in
 [`diagrams/`](../../diagrams/) are original design sketches and may differ from it.
-[AGENTS.md](../../AGENTS.md) requires reviewing architecture documentation with each
-code change and updating affected explanations in the same change. Keep the
+Review the architecture documentation with each code change and update affected
+explanations in the same change. Keep the
 overview conceptual and implementation details in the relevant module page.
 CI does not automatically verify documentation accuracy.

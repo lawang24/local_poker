@@ -208,7 +208,7 @@ with mobile viewport simulation, not a physical-phone or real-AWS load test.
 
 ## Structure
 
-- [Architecture guide](docs/architecture.md): a short system overview with focused module pages for implementation details. [AGENTS.md](AGENTS.md) requires keeping it current with relevant code changes.
+- [Architecture guide](docs/architecture.md): a short system overview with focused module pages for implementation details. Update the guide alongside relevant code changes.
 - `backend/game.py`: synchronous game rules and serializable player views.
 - `backend/main.py`: WebSocket protocol, the game lock, sessions, bounded broadcasts, and `/health`.
 - `backend/storage.py`: atomic DynamoDB checkpoints/history and restart recovery.
