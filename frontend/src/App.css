@@ -681,6 +681,37 @@ button.nameplate:hover, button.nameplate:focus-visible { border-color: #ddd; }
 .app-table .community-cards .card { aspect-ratio: 61 / 74; }
 .app-table .seat-cards .card { border-radius: 7%; filter: drop-shadow(0 1px 2px #0003); }
 
+.connection-progress {
+  width: min(100%, 400px);
+  margin: clamp(32px, 9vh, 80px) auto 32px;
+  padding: 28px;
+  background: #111d16;
+}
+.connection-progress h2 { margin-bottom: 6px; font-size: 22px; }
+.connection-progress p { color: #c3cfc6; margin-bottom: 22px; }
+.connection-progress .connection-estimate { margin: 6px 0 0; color: #eeeae0; font-weight: 600; }
+.connection-progress small { color: #adc0b3; font-variant-numeric: tabular-nums; }
+.connection-track {
+  height: 5px;
+  margin-bottom: 6px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #34493d;
+}
+.connection-track::before {
+  content: "";
+  display: block;
+  width: 40%;
+  height: 100%;
+  border-radius: inherit;
+  background: #8dd5a6;
+  animation: connection-pulse 1.6s ease-in-out infinite alternate;
+}
+@keyframes connection-pulse { to { transform: translateX(150%); } }
+@media (prefers-reduced-motion: reduce) {
+  .connection-track::before { animation: none; width: 100%; }
+}
+
 /* Keep the playing surface steady while sizing bets or using a phone keyboard. */
 .app-table { height: 100svh; }
 .app-table .south-bet {

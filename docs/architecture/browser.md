@@ -132,6 +132,16 @@ Use separate browser profiles for separate people; names do not identify players
 Clearing browser storage loses access to that identity, and cross-device login and
 account recovery are not implemented.
 
+While joining or restoring a tab, the browser shows an
+[indeterminate progress bar](../../frontend/src/ConnectionProgress.tsx) and elapsed wait
+time across connection attempts. After three seconds, the panel shows an approximate
+remaining wait based on [Render’s typical one-minute free-service wake-up](https://render.com/docs/free#spinning-down-on-idle).
+It rounds up to ten-second intervals and keeps the original start time across retries.
+If the minute passes, the panel reports the delay and continues retrying. Opening
+the socket removes the wake-up estimate and advances the message to loading
+the table. The first player state ends the wait. Once a table is visible, it stays
+on screen during reconnects.
+
 After a connection closes, the browser retries with exponential backoff capped at
 ten seconds. The token reclaims a retained seat or creates a new seat with the
 same permanent player ID after pruning. A second connection using the same token

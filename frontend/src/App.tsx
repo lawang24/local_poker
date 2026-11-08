@@ -9,6 +9,8 @@ import { Feedback } from "./Feedback";
 import { TableToolbar } from "./TableToolbar";
 import { Settings } from "./Settings";
 
+import { ConnectionProgress } from "./ConnectionProgress";
+
 import { TableChat } from "./TableChat";
 import { useTypingViewport } from "./useTypingViewport";
 
@@ -59,7 +61,7 @@ export default function App() {
           return;
         }
         attempts = 0;
-        setStatus("Connected");
+        setStatus("Loading table");
         setError("");
         socket.send(
           JSON.stringify({
@@ -92,19 +94,18 @@ export default function App() {
                 });
               }, 6000));
             }
+            setStatus("Connected");
             setPending(false);
           }
           if (msg.type === "error") {
             setError(msg.message);
+            setStatus(current => current === "Loading table" ? "Unable to join" : current);
             setPending(false);
           }
         } catch {
           setError("The server sent an unreadable response.");
+          setStatus(current => current === "Loading table" ? "Unable to join" : current);
         }
-      };
-      socket.onerror = () => {
-        if (!stopped)
-          setError("Connection failed. Check that the server is running.");
       };
       socket.onclose = (event) => {
         if (stopped) return;
@@ -168,7 +169,6 @@ export default function App() {
           <span className={`status ${status === "Connected" ? "online" : ""}`}>
             {status}
           </span>
-          {state && <button aria-pressed={settingsOpen} onClick={() => setSettingsOpen(!settingsOpen)}>{settingsOpen ? "Table" : "Settings"}</button>}
           {joined && (
             <button
               onClick={() => {
@@ -246,13 +246,8 @@ export default function App() {
           </p>
         </section>
       ) : !state ? (
-        <section className="panel join" role="status">
-          <h2>Connecting to the table…</h2>
-          <p>
-            The server should be available in a moment. Connection retries
-            happen automatically.
-          </p>
-        </section>
+        status === "Unable to join" || status === "Seat opened elsewhere" ? null :
+          <ConnectionProgress loadingTable={status === "Loading table"} />
       ) : settingsOpen ? (
         <Settings key={`${state.small_blind}:${state.big_blind}:${state.seven_deuce_bonus}:${state.cents}:${state.running}`} state={state} ready={ready} send={send} back={() => setSettingsOpen(false)} />
       ) : (
