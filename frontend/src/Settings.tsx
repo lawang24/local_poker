@@ -9,9 +9,11 @@ export function Settings({ state, ready, send, back }: {
   const [cents, setCents] = useState(state.cents);
   const [sb, setSb] = useState(inputAmount(state.small_blind, state.cents));
   const [bb, setBb] = useState(inputAmount(state.big_blind, state.cents));
+  const [bonusInput, setBonusInput] = useState(inputAmount(state.seven_deuce_bonus, state.cents));
+  const bonus = parseAmount(bonusInput, cents);
   const small = parseAmount(sb, cents), big = parseAmount(bb, cents);
-  const valid = small > 0 && big >= small && big <= 1_000_000;
-  const changed = small !== state.small_blind || big !== state.big_blind || cents !== state.cents;
+  const valid = small > 0 && big >= small && big <= 1_000_000 && bonus >= 0 && bonus <= 1_000_000;
+  const changed = small !== state.small_blind || big !== state.big_blind || cents !== state.cents || bonus !== state.seven_deuce_bonus;
   return <section className="settings-page panel" aria-labelledby="settings-title">
     <button type="button" onClick={back}>← Back to table</button>
     <p className="eyebrow">SHARED LOBBY</p>
@@ -19,7 +21,7 @@ export function Settings({ state, ready, send, back }: {
     <p className="hint">Anyone at the table can change these settings. Changes apply to every player.</p>
     <form onSubmit={e => {
       e.preventDefault();
-      if (ready && valid && changed) send({ type: "settings", small_blind: small, big_blind: big, cents });
+      if (ready && !state.running && valid && changed) send({ type: "settings", small_blind: small, big_blind: big, cents, seven_deuce_bonus: bonus });
     }}>
       <fieldset disabled={!ready || state.running}>
         <legend>Denominations</legend>
@@ -29,6 +31,7 @@ export function Settings({ state, ready, send, back }: {
             const next = e.target.checked;
             if (Number.isFinite(small)) setSb(inputAmount(small, next));
             if (Number.isFinite(big)) setBb(inputAmount(big, next));
+            if (Number.isFinite(bonus)) setBonusInput(inputAmount(bonus, next));
             setCents(next);
           }} />
         </label>
@@ -38,8 +41,16 @@ export function Settings({ state, ready, send, back }: {
         </div>
         <p className="hint">{state.running ? "Finish the current hand to change denominations." : "Blinds must be positive, with the big blind at least as large as the small blind."}</p>
       </fieldset>
+      <fieldset disabled={!ready || state.running}>
+        <legend>2–7 offsuit game</legend>
+        <label>Bonus per opponent
+          <input type="number" required min={0} max={cents ? 10000 : 1000000} step={cents ? .01 : 1}
+            value={bonusInput} onChange={e => setBonusInput(e.target.value)} aria-describedby="bonus-help" />
+        </label>
+        <p id="bonus-help" className="hint">Win with 2–7 offsuit by taking the main pot outright on every board or by getting everyone to fold. Each other player dealt in pays up to the amount they have left. Set to 0 to turn off.</p>
+      </fieldset>
       <div className="settings-save">
-        <button className="primary" disabled={!ready || !valid || !changed}>Save settings</button>
+        <button className="primary" disabled={!ready || state.running || !valid || !changed}>Save settings</button>
         <span role="status">{!ready ? "Waiting for connection or update…" : changed ? "Unsaved changes" : "Lobby settings are up to date"}</span>
       </div>
     </form>

@@ -42,8 +42,9 @@ cash-out and preserves the next dealer when removing the current dealer.
 Seat numbers are checkpointed; older checkpoints derive them from list order.
 Moves emit `seat_changed` events, and kicks attribute `seat_removed` to the requester.
 Any connected player can change the shared lobby settings:
-positive integer-unit blinds (SB ≤ BB ≤ 1,000,000) and cents mode.
-Blinds and cents can change only between hands. Automatic dealing is always enabled.
+positive integer-unit blinds (SB ≤ BB ≤ 1,000,000), cents mode, and the per-opponent
+2–7 offsuit bonus (0–1,000,000 units, default 0). These settings can change only
+between hands. Automatic dealing is always enabled.
 Cents mode denominates each integer unit as 0.01 instead of 1 for everyone;
 switching modes preserves underlying chip balances. The default denomination is whole chips. Settings are checkpointed with backward-compatible defaults and
 emit a `settings_changed` archive event. Chat and game activity share a rolling display log of 100 entries.
@@ -53,7 +54,16 @@ boards (indexed by runout during an all-in), chat, and results.
 Each event has a schema version, UTC timestamp, sequence, session ID, and hand ID
 when applicable. Hand starts capture seat order, starting stacks, all hole cards,
 and the shuffled deck in draw order. Completion captures contributions, payouts,
-ending stacks, and per-player net (`payout - contribution`).
+ending stacks, and per-player net (ending stack minus opening stack).
+
+With a positive bonus, the engine checks the dealt hole cards when the hand ends.
+An offsuit seven and two qualify on a fold win or an outright main-pot win on
+every runout. A tie, a side-pot-only win, or an uncalled-chip return alone does
+not qualify. After ordinary pot settlement, every other player dealt in,
+including folded and disconnected players, pays once up to their remaining stack.
+Players who joined mid-hand or sat out owe nothing. The result records actual
+payments and the winner's total separately from pot awards. The activity log
+names the winner, and the archive includes the transfers in hand profit.
 
 Pending events and identity registrations live on `Table` only until the connection
 layer saves them. They are cleared after a successful save (or discarded in
@@ -68,8 +78,8 @@ package is declared in [requirements.txt](../../backend/requirements.txt).
 
 `Table.state(viewer)` is the privacy boundary. It includes public seat information,
 the board and betting state, the viewer's hole cards, and server-computed action
-limits. Opponents' hole cards are absent until a contested showdown exposes the
-remaining hands in the result. Session tokens are sent in the joining player's
+limits. A contested showdown exposes the remaining hands in the result. An
+uncontested 2–7 bonus reveals only the winner's hand. Session tokens are sent in the joining player's
 session response, not in table snapshots.
 
 The server sends these views through the [connection module](connections.md).
@@ -86,4 +96,6 @@ hands. [Settings tests](../../backend/tests/test_settings.py) cover shared-setti
 validation, checkpoint compatibility, delayed deals, cancellation, and disconnects.
 [Runout tests](../../backend/tests/test_runouts.py) cover consent, deadlines,
 card uniqueness, shared board prefixes, side pots, odd chips, reconnects and recovery.
+[2–7 tests](../../backend/tests/test_seven_deuce.py) cover eligibility, capped
+payments, pot accounting, reveals, and completed-hand recovery.
 See the [README](../../README.md#checks) for test commands.

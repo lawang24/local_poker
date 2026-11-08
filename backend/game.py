@@ -9,6 +9,9 @@ from deck_of_cards import DeckOfCards
 from phevaluator.evaluator import evaluate_cards
 
 
+_UNCHANGED = object()
+
+
 class InvalidAction(ValueError):
     pass
 
@@ -48,6 +51,7 @@ class Table:
         self.min_raise = 10
         self.small_blind = 5
         self.big_blind = 10
+        self.seven_deuce_bonus = 0
         self.auto_deal = True
         self.cents = False
         self.pending = set()
@@ -268,6 +272,7 @@ class Table:
             "dealer": self.dealer,
             "small_blind": self.small_blind,
             "big_blind": self.big_blind,
+            "seven_deuce_bonus": self.seven_deuce_bonus,
             "players": self.private_players(),
             "deck_order": deck_order,
         }
@@ -473,6 +478,28 @@ class Table:
         self.target, self.min_raise = 0, self.big_blind
         self.finish(boards)
 
+    def settle_seven_deuce(self, live, runouts):
+        if not self.seven_deuce_bonus:
+            return None
+        for winner in live:
+            if {card[0] for card in winner.hand} != {"7", "2"} or winner.hand[0][1] == winner.hand[1][1]:
+                continue
+            # The first contested layer on each board is the main pot.
+            if len(live) > 1 and not all(
+                run["pots"] and run["pots"][0]["winners"] == [winner.id] for run in runouts
+            ):
+                continue
+            payments = {}
+            for p in self.players:
+                if p.in_hand and p.id != winner.id:
+                    paid = min(self.seven_deuce_bonus, p.stack)
+                    p.stack -= paid
+                    payments[p.id] = paid
+            total = sum(payments.values())
+            winner.stack += total
+            return {"winner": winner.id, "payments": payments, "total": total}
+        return None
+
     def finish(self, boards=None):
         live = self.live()
         boards = boards or [list(self.board)]
@@ -532,12 +559,16 @@ class Table:
                         award(share + (index < odd), winners, index)
         else:
             payouts = {p.id: p.contribution for p in self.players}
+        opening_stacks = {p.id: p.stack + p.contribution for p in self.players if p.in_hand}
         for p in self.players:
             p.stack += payouts[p.id]
+        bonus = self.settle_seven_deuce(live, runouts)
+        revealed = live if len(live) > 1 or bonus else []
         self.result = {
             "payouts": payouts,
             "pots": pots,
-            "hands": {p.id: p.hand for p in live} if len(live) > 1 else {},
+            "hands": {p.id: p.hand for p in revealed},
+            "seven_deuce_bonus": bonus,
             "runouts": runouts if len(live) > 1 else [],
         }
         self.log(
@@ -548,6 +579,9 @@ class Table:
                 if payouts[p.id]
             )
         )
+        if bonus:
+            winner = self.player(bonus["winner"])
+            self.log(f"{winner.name} wins the 2–7 offsuit bonus (+{bonus['total']}).")
         self.record(
             "hand_completed",
             start=self.hand_start,
@@ -555,7 +589,7 @@ class Table:
             result=self.result,
             players=self.private_players(),
             net={
-                p.id: payouts[p.id] - p.contribution for p in self.players if p.in_hand
+                p.id: p.stack - opening_stacks[p.id] for p in self.players if p.in_hand
             },
         )
         self.pot = 0
@@ -594,10 +628,11 @@ class Table:
         if not any(p.connected for p in self.players):
             self.end_session("table_empty")
 
-    def set_settings(self, player_id, small_blind, big_blind, auto_deal, cents):
+    def set_settings(self, player_id, small_blind, big_blind, auto_deal, cents, seven_deuce_bonus=_UNCHANGED):
         if not self.player(player_id).connected:
             raise InvalidAction("Join the table before changing settings.")
         sb, bb = chips(small_blind), chips(big_blind)
+        bonus = self.seven_deuce_bonus if seven_deuce_bonus is _UNCHANGED else chips(seven_deuce_bonus)
         if not 0 < sb <= bb:
             raise InvalidAction("Blinds must be positive, with SB no greater than BB.")
         if type(cents) is not bool:
@@ -605,12 +640,16 @@ class Table:
         # Accept the optional legacy field, but it no longer controls dealing.
         if auto_deal is not None and type(auto_deal) is not bool:
             raise InvalidAction("Auto-deal must be true or false.")
-        if self.running and (sb != self.small_blind or bb != self.big_blind or cents != self.cents):
-            raise InvalidAction("Change blinds and cents between hands.")
+        if self.running and (sb, bb, cents, bonus) != (
+            self.small_blind, self.big_blind, self.cents, self.seven_deuce_bonus
+        ):
+            raise InvalidAction("Change table settings between hands.")
         self.small_blind, self.big_blind = sb, bb
         self.cents = cents
+        self.seven_deuce_bonus = bonus
         self.record("settings_changed", player_id=player_id,
-                    small_blind=sb, big_blind=bb, auto_deal=True, cents=cents)
+                    small_blind=sb, big_blind=bb, auto_deal=True, cents=cents,
+                    seven_deuce_bonus=bonus)
 
     def set_stack(self, player_id, amount):
         if self.running:
@@ -664,6 +703,7 @@ class Table:
             "small_blind": self.small_blind,
             "big_blind": self.big_blind,
             "auto_deal": self.auto_deal,
+            "seven_deuce_bonus": self.seven_deuce_bonus,
             "cents": self.cents,
             "min_raise_to": self.target + self.min_raise,
             "max_raise_to": max_total,

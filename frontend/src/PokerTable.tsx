@@ -92,6 +92,7 @@ export function PokerTable({ state, ready, send, speech }: {
 
   const eligible = players.filter(p => p.connected && p.stack > 0).length;
   const runouts = state.result?.runouts;
+  const bonus = state.result?.seven_deuce_bonus;
   const twice = runouts && runouts.length > 1;
   return <div className={`table-stage ${twice ? "has-two-runouts" : ""}`} data-player-count={9}>
     <div className="felt">
@@ -106,8 +107,8 @@ export function PokerTable({ state, ready, send, speech }: {
         </div> : <div className="community-cards">
           <Cards cards={state.board} />
         </div>}
-        <p className="table-caption">{state.runout_vote ? "Choosing runouts" : state.running ? `${players.find(p => p.id === state.actor)?.name || "Table"} to act` : eligible < 2 ? "Waiting for players with chips" : state.street === "complete" ? "Next hand starting soon" : "First hand starting soon"}</p>
-        <p className="board-meta">Hand #{state.hand_number} · {state.street} · {formatAmount(state.small_blind, state.cents)} / {formatAmount(state.big_blind, state.cents)}</p>
+        <p className="table-caption">{bonus ? `2–7 offsuit bonus +${formatAmount(bonus.total, state.cents)}` : state.runout_vote ? "Choosing runouts" : state.running ? `${players.find(p => p.id === state.actor)?.name || "Table"} to act` : eligible < 2 ? "Waiting for players with chips" : state.street === "complete" ? "Next hand starting soon" : "First hand starting soon"}</p>
+        <p className="board-meta">Hand #{state.hand_number} · {state.street} · {formatAmount(state.small_blind, state.cents)} / {formatAmount(state.big_blind, state.cents)}{state.seven_deuce_bonus > 0 && ` · 2–7: ${formatAmount(state.seven_deuce_bonus, state.cents)}`}</p>
       </div>
       <span className="felt-brand" aria-hidden="true">HEADWINS <b>POKER</b></span>
     </div>

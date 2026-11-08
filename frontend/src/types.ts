@@ -22,6 +22,7 @@ export type State = {
   target: number;
   small_blind: number;
   big_blind: number;
+  seven_deuce_bonus: number;
   cents: boolean;
   min_raise_to: number;
   max_raise_to: number;
@@ -38,6 +39,7 @@ export type State = {
   result: null | {
     payouts: Record<string, number>;
     hands: Record<string, string[]>;
+    seven_deuce_bonus?: { winner: string; payments: Record<string, number>; total: number } | null;
     runouts?: { board: string[]; payouts: Record<string, number>; pots: { amount: number; winners: string[]; runout: number }[] }[];
   };
 };

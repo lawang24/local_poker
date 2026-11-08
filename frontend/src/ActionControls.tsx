@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { formatAmount, inputAmount, parseAmount } from "./amounts";
 import type { State } from "./types";
 
-export type Action = { type: string; seat?: number; player_id?: string; amount?: number; text?: string; small_blind?: number; big_blind?: number; cents?: boolean; count?: number; hand_id?: string };
+export type Action = { type: string; seat?: number; player_id?: string; amount?: number; text?: string; small_blind?: number; big_blind?: number; seven_deuce_bonus?: number; cents?: boolean; count?: number; hand_id?: string };
 
 export function ActionControls({ state, ready, send }: {
   state: State; ready: boolean; send: (action: Action) => void;

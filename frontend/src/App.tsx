@@ -254,7 +254,7 @@ export default function App() {
           </p>
         </section>
       ) : settingsOpen ? (
-        <Settings key={`${state.small_blind}:${state.big_blind}:${state.cents}:${state.running}`} state={state} ready={ready} send={send} back={() => setSettingsOpen(false)} />
+        <Settings key={`${state.small_blind}:${state.big_blind}:${state.seven_deuce_bonus}:${state.cents}:${state.running}`} state={state} ready={ready} send={send} back={() => setSettingsOpen(false)} />
       ) : (
         <>
           <div className="game-layout">

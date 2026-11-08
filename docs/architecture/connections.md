@@ -43,7 +43,7 @@ All messages are JSON text over `/ws`. Clients join before sending game commands
 | Client → server | `raise` | `amount` is the total commitment for this street. |
 | Client → server | `runout` | `count` is integer 1 or 2; `hand_id` must match the pending offer. Only connected contenders may vote, once per hand. |
 | Client → server | `set_stack` | `amount` sets the player’s stack between hands. |
-| Client → server | `settings` | Any joined player sets integer `small_blind`, `big_blind` and boolean `cents` for the lobby. Legacy `auto_deal` is optional and cannot disable dealing. |
+| Client → server | `settings` | Any joined player sets integer `small_blind`, `big_blind`, boolean `cents`, and optional integer `seven_deuce_bonus` (0–1,000,000). Omitting the bonus retains the current value. Legacy `auto_deal` is optional and cannot disable dealing. |
 | Client → server | `move_seat` | `seat` is an integer 0–8; move to an empty seat between hands. |
 | Client → server | `kick` | `player_id` identifies another player to remove between hands. |
 | Client → server | `chat` | `text` contains 1–300 characters after trimming. |
@@ -56,7 +56,7 @@ the same lock as betting. Kicks save the removal before detaching and closing th
 target socket with `4002`, then broadcast the remaining table. A stale socket
 cannot send further commands or disconnect a replacement in its cleanup.
 
-Snapshots include shared `small_blind`, `big_blind`, `cents`, and a legacy
+Snapshots include shared `small_blind`, `big_blind`, `cents`, `seven_deuce_bonus`, and a legacy
 `auto_deal` field that is always true.
 Settings requests validate all fields before mutation, and use the same lock,
 checkpoint, and broadcast path as game actions.
@@ -78,6 +78,9 @@ still a running hand, so neither the next-deal timer nor between-hand commands c
 interrupt it. Replacement connections retain votes and the original deadline.
 Completed `result.runouts` contains the board, per-run payouts and pot layers for
 each run, while `result.payouts` remains the total (including refunds).
+An awarded `result.seven_deuce_bonus` contains the `winner` ID, actual `payments`
+by opponent ID, and `total`. It is null for ordinary results and absent in older
+checkpoints. Bonus awards reveal the winning cards in `result.hands`.
 
 After accepting a chat message, the server includes `chat: {player_id, text}`
 beside `state` in that broadcast, using the authenticated sender’s ID and trimmed

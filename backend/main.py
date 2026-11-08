@@ -246,9 +246,11 @@ async def websocket_endpoint(websocket: WebSocket):
                         server.table.choose_runouts(player.id, data.get("count"),
                                                     data.get("hand_id"))
                     elif kind == "settings":
-                        server.table.set_settings(player.id, data.get("small_blind"),
-                                                  data.get("big_blind"), data.get("auto_deal"),
-                                                  data.get("cents"))
+                        server.table.set_settings(
+                            player.id, data.get("small_blind"), data.get("big_blind"),
+                            data.get("auto_deal"), data.get("cents"),
+                            data.get("seven_deuce_bonus", server.table.seven_deuce_bonus),
+                        )
                     elif kind == "move_seat":
                         server.table.move_seat(player.id, data.get("seat"))
                     elif kind == "kick":

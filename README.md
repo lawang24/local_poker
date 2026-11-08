@@ -45,13 +45,14 @@ at `http://127.0.0.1:8001/health`; Vite's default health proxy still targets 800
 ## Gameplay
 
 - Start with 1,000 play chips; blinds are 5/10. Click your nameplate to change your own stack between hands, including rebuying after losing your chips.
+- **2–7 offsuit game.** In Options → Settings, set **Bonus per opponent** between hands. Zero turns the game off. A player holding an offsuit seven and two earns the bonus when everyone else folds or when they win the main pot outright on every runout. Their cards are shown. Each other player dealt into that hand pays the configured amount once, up to their stack after pot awards.
 - The dealer rotates between eligible players. Heads-up, the dealer posts the small blind and acts first preflop, last postflop.
 - **Raise to** is the total committed on the current betting street. The server checks turns, minimum raises, available chips, and whether short all-ins reopen betting.
 - All-in players skip further actions. When no further betting is possible, the board runs out automatically. Main/side pots split by eligibility and hand rank; odd chips go clockwise starting left of the dealer. Uncalled excess is returned.
 - A completed hand stays visible for five seconds before the next automatic deal, provided two connected players have chips. There is no mid-hand restart.
 - When all-in betting closes before the river, everyone still in the hand chooses **Run once** or **Run twice**. Two runs require unanimous agreement within 20 seconds; one-run votes, timeouts, or a disconnected contender mean one run. Existing community cards are shared, each pot is split between runs, and both boards and awards appear at showdown.
 - New arrivals wait for the next hand. Disconnecting during betting folds a player with chips; during a runout choice it settles once without folding; an all-in player remains eligible. Reload restores the same seat using its saved browser identity, but a hand already folded remains folded. Reconnecting the same token elsewhere replaces the old socket.
-- Chat and the last 100 activity messages are shared by everyone at the table. Hole cards stay private until a contested showdown.
+- Chat and the last 100 activity messages are shared by everyone at the table. Hole cards stay private until a contested showdown or a winning 2–7 bonus reveal.
 
 ## DynamoDB and budget alerts
 
@@ -137,7 +138,7 @@ the backend, run these commands from `backend` using an authorized AWS profile:
 ```
 
 Session events identify players and hands. Player exports include lifetime net
-chips and totals by session, calculated from payouts minus contributions; rebuys,
+chips and totals by session, including pot payouts, contributions, and 2–7 transfers. Rebuys,
 stack changes, and cash-outs are separate movement records. Cancelled hands count
 as zero net. Each output must be a new filename and is created with owner-only
 permissions. Hand/session exports include private cards and deck order, so keep

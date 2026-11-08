@@ -2,7 +2,7 @@
 
 Headwins Poker is a browser-based, play-money Texas Hold’em app for two to nine
 players at one shared table, with nine fixed seats and no host or privileged seat.
-Between hands, players can move to empty seats or remove another player. Anyone at the table can configure shared blinds and cents denominations from Settings. Hands deal automatically
+Between hands, players can move to empty seats or remove another player. Anyone at the table can configure shared blinds, cents denominations, and the optional 2–7 offsuit bonus from Settings. Hands deal automatically
 after five seconds whenever at least two connected players have chips. The browser shows the game and sends player actions;
 the backend owns the rules, chips, and authoritative state.
 

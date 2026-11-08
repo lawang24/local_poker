@@ -19,7 +19,8 @@ The existing checkpoint table keeps its string partition key `pk=GAME#GLOBAL`,
 with increasing `version` and a compressed binary JSON `payload`. Schema 2 adds
 session/hand IDs, starting-hand data, and the event sequence to the existing
 players, chips, board, result, blinds, and recent display log. Shared cents and
-the legacy auto-deal flag are also saved. Cents defaults to false for older
+the legacy auto-deal flag are also saved. The saved 2–7 bonus defaults to zero
+for older checkpoints. Cents defaults to false for older
 checkpoints; auto-deal always restores as true, regardless of its saved value.
 The pending auto-deal timer is transient and is recreated only when eligible
 players reconnect while no hand is running. The checkpoint remains bounded.
@@ -81,9 +82,9 @@ seats start at 1,000. Identity profiles outlive seats. The browser retains its
 credential across visits, but there is no cross-device account or identity recovery.
 
 Seat entry, stack adjustments, seat removal, and session closure create distinct
-chip-transfer records. Hand profit is payout minus contribution, including
-returned uncalled chips. Therefore a rebuy is not a win, a cash-out is not a loss,
-and cancelled hands have zero net. Per-hand results can be summed by player and
+chip-transfer records. Hand profit includes pot payouts and uncalled returns,
+less contributions, plus any 2–7 bonuses received or paid. Cancelled hands
+have zero net. Per-hand results can be summed by player and
 session without replaying every action. No balances are inferred from names.
 
 ## Restart and migration

@@ -48,7 +48,8 @@ artwork with a compact corner rank and vector suit above the covered portion;
 desktop seats place the larger cards beside the label. Both variants use native
 61:74 artwork, so ranks and suits are never stretched. The deck README records
 the font source and retained SIL Open Font License. Opponents
-show card backs during play and only the server-provided result hands at showdown.
+show card backs during play and reveal only the server-provided result hands at
+showdown or after an uncontested 2–7 bonus.
 [ActionControls.tsx](../../frontend/src/ActionControls.tsx) owns the raise form and in-hand actions. Between hands it renders nothing;
 the table caption indicates automatic dealing or waiting for funded players. Stack
 editing stays in the viewer’s nameplate dialog. During the viewer's turn, a compact outlined row presents Call or Check,
@@ -85,7 +86,9 @@ Closing after resolution restores native focus. The browser does not decide the
 outcome from its countdown. [Runouts.css](../../frontend/src/Runouts.css) owns the
 choice and result styling. [PokerTable.tsx](../../frontend/src/PokerTable.tsx) shows
 two labeled boards and each run's payouts after a two-run showdown; seat payouts
-show the aggregate award. Existing single-board results remain supported.
+show the aggregate pot award. The felt lists the configured 2–7 amount when
+enabled and shows the collected bonus on a qualifying result. The activity log
+identifies the winner. Existing single-board results remain supported.
 
 ## Feedback
 
@@ -103,16 +106,17 @@ its trailing `/ws`) and does not join a seat or interrupt the game connection.
 
 [Settings.tsx](../../frontend/src/Settings.tsx) is a dedicated page opened from the
 Options menu without dropping the connection. Any connected player can save shared
-small/big blinds and cents mode. Dealing is always automatic, including the first hand;
+small/big blinds, cents mode, and the 2–7 bonus per opponent. Zero disables the
+bonus. Dealing is always automatic, including the first hand;
 there is no manual deal button or auto-deal toggle. The server snapshot is authoritative;
-there is no browser-local settings preference. Denominations are locked during a
+there is no browser-local settings preference. Shared settings are locked during a
 hand. New shared settings reset open
 drafts, and leaving the page discards unsaved changes.
 
 [amounts.ts](../../frontend/src/amounts.ts) formats amounts and converts numeric
 inputs to integer wire units. With cents enabled, 100 wire units equal 1.00;
 otherwise they equal 100 whole chips. Switching modes preserves integer balances
-and blinds, changing their denomination for everyone. Bets, stacks, payouts, and
+and configured bet and bonus amounts, changing their denomination for everyone. Bets, stacks, payouts, and
 blind labels use the shared mode. Historical activity text retains its original
 integer-unit amounts. Inputs accept increments of 0.01 in cents mode and 1 otherwise.
 

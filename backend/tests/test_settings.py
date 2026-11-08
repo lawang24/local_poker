@@ -44,9 +44,10 @@ class SettingsTests(unittest.TestCase):
         self.assertTrue(self.table.auto_deal)
 
     def test_checkpoint_roundtrip_and_legacy_defaults(self):
-        self.table.set_settings(self.b.id, 25, 50, True, True)
+        self.table.set_settings(self.b.id, 25, 50, True, True, 75)
         saved = snapshot(self.table)
         recovered = restore(saved)
+        self.assertEqual(recovered.seven_deuce_bonus, 75)
         self.assertEqual((recovered.small_blind, recovered.big_blind,
                           recovered.auto_deal, recovered.cents), (25, 50, True, True))
         old = json.loads(saved)
@@ -54,9 +55,24 @@ class SettingsTests(unittest.TestCase):
         self.assertTrue(restore(json.dumps(old)).auto_deal)
         del old["auto_deal"]
         del old["cents"]
+        del old["seven_deuce_bonus"]
         recovered = restore(json.dumps(old))
         self.assertTrue(recovered.auto_deal)
         self.assertFalse(recovered.cents)
+        self.assertEqual(recovered.seven_deuce_bonus, 0)
+
+    def test_bonus_is_shared_validated_and_locked_during_a_hand(self):
+        self.table.set_settings(self.b.id, 5, 10, None, False, 75)
+        self.table.set_settings(self.a.id, 5, 10, None, False)
+        self.assertEqual(self.table.state(self.a.id)["seven_deuce_bonus"], 75)
+        for invalid in (-1, 1_000_001, True, 1.5, "10", None):
+            with self.subTest(invalid=invalid), self.assertRaises(InvalidAction):
+                self.table.set_settings(self.b.id, 10, 20, None, True, invalid)
+        self.assertEqual(self.table.big_blind, 10)
+        self.table.start(self.a.id)
+        with self.assertRaises(InvalidAction):
+            self.table.set_settings(self.a.id, 5, 10, None, False, 0)
+        self.assertEqual(self.table.hand_start["seven_deuce_bonus"], 75)
 
 
 class AutoDealTests(unittest.IsolatedAsyncioTestCase):
