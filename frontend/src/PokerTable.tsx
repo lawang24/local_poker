@@ -16,8 +16,8 @@ function portraitPosition(index: number, count: number): [number, number] {
   return [86, rails[rightCount][index - leftCount - 1]];
 }
 
-function Seat({ player, state, index, count, select }: {
-  player: Player; state: State; index: number; count: number; select: () => void;
+function Seat({ player, state, index, count, select, speech }: {
+  player: Player; state: State; index: number; count: number; select: () => void; speech?: string;
 }) {
   const angle = (index * Math.PI * 2) / Math.max(count, 2);
   const x = 50 - 40 * Math.sin(angle);
@@ -37,6 +37,8 @@ function Seat({ player, state, index, count, select }: {
     data-seat={index + 1}
     aria-label={`${player.name}${mine ? ", you" : ""}, ${formatAmount(player.stack, state.cents)} chips${label ? `, ${label}` : ""}`}
   >
+    {speech && <div className="seat-speech"><span>{speech}</span></div>}
+    {index === 0 && state.running && player.committed > 0 && <div className="table-bet south-bet" aria-label={`${player.name} bet ${formatAmount(player.committed, state.cents)}`}>{formatAmount(player.committed, state.cents)}</div>}
     <div className="seat-body">
       <div className="seat-cards">
         {cards.length ? <Cards cards={cards} hole /> : covered ? <div className="card-backs" aria-label="Two hidden cards"><span /><span /></div> : <div className="empty-cards" aria-hidden="true">{player.folded ? "×" : ""}</div>}
@@ -78,7 +80,8 @@ function PlayerStackEditor({ player, state, ready, send, close }: {
   </form>;
 }
 
-export function PokerTable({ state, ready, send }: {
+export function PokerTable({ state, ready, send, speech }: {
+  speech: Record<string, string>;
   state: State; ready: boolean; send: (action: Action) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -112,7 +115,7 @@ export function PokerTable({ state, ready, send }: {
       const occupant = players.find(p => p.seat === index);
       const [mx, my] = portraitPosition(index, 9);
       const angle = index * Math.PI * 2 / 9;
-      return occupant ? <Seat key={index} player={occupant} state={state} index={index} count={9} select={() => {
+      return occupant ? <Seat key={index} speech={speech[occupant.id]} player={occupant} state={state} index={index} count={9} select={() => {
         setSelected(occupant.id);
         setEditorVersion(version => version + 1);
         dialog.current?.showModal();
@@ -146,7 +149,7 @@ export function PokerTable({ state, ready, send }: {
       const index = player.seat;
       const angle = index * Math.PI * 2 / 9;
       const [mx, my] = portraitPosition(index, 9);
-      return state.running && player.committed > 0 ? <div key={player.id} className="table-bet" style={{left: `${50 - 22 * Math.sin(angle)}%`, top: `${50 + 22 * Math.cos(angle)}%`, "--desktop-bet-x": `${50 - 22 * Math.sin(angle)}%`, "--desktop-bet-y": `${50 + 22 * Math.cos(angle)}%`, "--mobile-bet-x": `${50 + (mx - 50) * .58}%`, "--mobile-bet-y": `${my + (my < 50 ? 8 : -3)}%`} as CSSProperties} aria-label={`${player.name} bet ${formatAmount(player.committed, state.cents)}`}><i aria-hidden="true" />{formatAmount(player.committed, state.cents)}</div> : null;
+      return index !== 0 && state.running && player.committed > 0 ? <div key={player.id} className={`table-bet ${mx < 50 ? "bet-left" : "bet-right"}`} style={{left: `${50 - 22 * Math.sin(angle)}%`, top: `${50 + 22 * Math.cos(angle)}%`, "--desktop-bet-x": `${50 - 22 * Math.sin(angle)}%`, "--desktop-bet-y": `${50 + 22 * Math.cos(angle)}%`, "--mobile-bet-x": `${50 + (mx - 50) * .58}%`, "--mobile-bet-y": `${my + (my < 50 ? 8 : -3)}%`} as CSSProperties} aria-label={`${player.name} bet ${formatAmount(player.committed, state.cents)}`}><i aria-hidden="true" />{formatAmount(player.committed, state.cents)}</div> : null;
     })}
   </div>;
 }

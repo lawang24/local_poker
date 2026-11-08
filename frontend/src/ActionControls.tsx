@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { formatAmount, inputAmount, parseAmount } from "./amounts";
 import type { State } from "./types";
 
@@ -12,7 +12,7 @@ export function ActionControls({ state, ready, send }: {
   const me = state.players.find(p => p.id === state.you)!;
   const myTurn = state.running && state.actor === state.you;
   const minimum = Math.min(state.min_raise_to, state.max_raise_to);
-  const [editing, setEditing] = useState(false);
+  const editor = useRef<HTMLDialogElement>(null);
   const [raiseTo, setRaiseTo] = useState(inputAmount(minimum, state.cents));
   const amount = parseAmount(raiseTo, state.cents);
   const canRaise = ready && myTurn && state.can_raise;
@@ -29,10 +29,20 @@ export function ActionControls({ state, ready, send }: {
       <span>{!ready ? "Waiting for connection or update…" : myTurn ? state.call_amount ? `${fmt(state.call_amount)} to call${state.call_amount === me.stack ? " · all-in" : ""}` : "You can check" : "Actions unlock on your turn"}</span>
     </div>
     <div className="betting-controls">
-      {myTurn && editing ? <form className="raise-editor" onSubmit={e => {e.preventDefault(); if(canRaise && valid) send({type:"raise",amount});}} onKeyDown={e => {if (e.key === "Escape") {e.preventDefault(); setEditing(false);}}}>
+      <dialog className="typing-panel bet-dialog" ref={editor} aria-labelledby="bet-title">
+        <div className="feedback-heading"><h2 id="bet-title">{betLabel} amount</h2>
+          <button type="button" aria-label="Close bet amount" onClick={() => editor.current?.close()}>×</button>
+        </div>
+        <form className="bet-form" onSubmit={e => {
+          e.preventDefault();
+          if (canRaise && valid) {
+            send({ type: "raise", amount });
+            editor.current?.close();
+          }
+        }}>
         <div className="raise-sizing">
           <label className="raise-amount">{betLabel} to
-            <input autoFocus aria-label={`${betLabel} to (total chips)`} type="number" step={1 / unit} min={minimum / unit} max={state.max_raise_to / unit} value={raiseTo} disabled={!canRaise} aria-invalid={!valid} aria-describedby="raise-help" onFocus={e => e.target.select()} onChange={e => setRaiseTo(e.target.value)} />
+            <input inputMode={state.cents ? "decimal" : "numeric"} aria-label={`${betLabel} to (total chips)`} type="number" step={1 / unit} min={minimum / unit} max={state.max_raise_to / unit} value={raiseTo} disabled={!canRaise} aria-invalid={!valid} aria-describedby="raise-help" onFocus={e => e.target.select()} onChange={e => setRaiseTo(e.target.value)} />
           </label>
           <input className="raise-slider" type="range" aria-label="Raise amount slider" aria-valuetext={`${fmt(sliderValue)} total chips`} min={minimum} max={state.max_raise_to} step="1" value={sliderValue} disabled={!canRaise} onChange={e => setRaiseTo(inputAmount(Number(e.target.value), state.cents))} />
         </div>
@@ -44,15 +54,17 @@ export function ActionControls({ state, ready, send }: {
         </div>
         <p id="raise-help" className="raise-help">{valid ? `${fmt(amount)} total · ${fmt((amount - me.committed))} more chips${amount === state.max_raise_to ? " · all-in" : ""}` : `Enter ${fmt(minimum)}–${fmt(state.max_raise_to)} total chips.`}</p>
         <div className="raise-confirmation">
-          <button type="button" className="cancel-action" onClick={() => setEditing(false)}>Cancel</button>
+          <button type="button" className="cancel-action" onClick={() => editor.current?.close()}>Cancel</button>
           <button className="confirm-action" disabled={!canRaise || !valid}>Confirm {betLabel.toLowerCase()}{valid ? ` ${fmt(amount)}` : ""}</button>
         </div>
-      </form> : myTurn ? <div className="primary-actions">
+      </form>
+      </dialog>
+      <div className="primary-actions">
         {state.call_amount > 0 && <button className="call-action" disabled={!ready || !state.call_amount} onClick={() => send({type:"check_call"})}>Call{state.call_amount > 0 ? ` ${fmt(state.call_amount)}` : ""}{state.call_amount > 0 && state.call_amount === me.stack && <small>All-in</small>}</button>}
-        <button className="raise-action" disabled={!canRaise} onClick={() => setEditing(true)}>{betLabel}</button>
+        <button className="raise-action" disabled={!canRaise} onClick={() => editor.current?.showModal()}>{betLabel}</button>
         {state.call_amount === 0 && <button className="check-action" disabled={!ready || state.call_amount > 0} onClick={() => send({type:"check_call"})}>Check</button>}
         <button className="fold-action" disabled={!ready} onClick={() => send({type:"fold"})}>Fold</button>
-      </div> : null}
+      </div>
     </div>
   </section>;
 }

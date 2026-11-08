@@ -86,7 +86,9 @@ The `--feedback-only` mode checks desktop/mobile dialogs, focus restoration, dra
 retention, guest/player persistence, Settings access, and private feedback export.
 Backend subprocesses keep their normal production dependencies. Tests cover
 complete hands, nine-player side pots, browser identity, private cards, crash
-recovery, transaction conflicts, mobile interactions, and the private export CLI.
+recovery, transaction conflicts, chat bubbles on a second player’s screen,
+mobile chat focus after sending, bottom-seat position and bet readability
+after a raise, and the private export CLI.
 Artifacts go to ignored `.artifacts/e2e/`; services stop after the run. The emulator
 does not reproduce AWS IAM, billing, throttling, or service latency, and mobile
 viewports do not replace physical-device testing. Setup is in the

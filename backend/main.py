@@ -140,13 +140,14 @@ class GameServer:
         except (WebSocketDisconnect, RuntimeError, OSError, asyncio.TimeoutError):
             pass
 
-    async def broadcast(self):
+    async def broadcast(self, chat=None):
         await self.checkpoint()
 
         async def send(pid, socket):
             try:
                 await asyncio.wait_for(
-                    socket.send_json({"type": "state", "state": self.table.state(pid)}),
+                    socket.send_json({"type": "state", "state": self.table.state(pid),
+                                      **({"chat": chat} if chat else {})}),
                     timeout=2,
                 )
             except (WebSocketDisconnect, RuntimeError, OSError, asyncio.TimeoutError):
@@ -165,6 +166,7 @@ class GameServer:
             ]
             if not failures:
                 break
+            chat = None  # Repair snapshots must not repeat the live message.
             for pid, socket in failures:
                 if self.sockets.get(pid) is socket:
                     del self.sockets[pid]
@@ -212,6 +214,7 @@ async def websocket_endpoint(websocket: WebSocket):
             async with server.lock:
                 if server.failed:
                     break
+                chat = None
                 try:
                     data = json.loads(raw)
                     if not isinstance(data, dict):
@@ -268,6 +271,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         server.table.log(
                             f"{player.name}: {message.strip()}", player_id=player.id
                         )
+                        chat = {"player_id": player.id, "text": message.strip()}
                     else:
                         raise InvalidAction("Unknown message type.")
                 except (InvalidAction, json.JSONDecodeError) as exc:
@@ -279,7 +283,7 @@ async def websocket_endpoint(websocket: WebSocket):
                             else "Invalid JSON.",
                         }
                     )
-                await server.broadcast()
+                await server.broadcast(chat)
     except StorageError:
         await server.close(websocket, code=1011)
     except (WebSocketDisconnect, RuntimeError, OSError):

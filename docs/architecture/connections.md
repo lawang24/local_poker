@@ -79,6 +79,12 @@ interrupt it. Replacement connections retain votes and the original deadline.
 Completed `result.runouts` contains the board, per-run payouts and pot layers for
 each run, while `result.payouts` remains the total (including refunds).
 
+After accepting a chat message, the server includes `chat: {player_id, text}`
+beside `state` in that broadcast, using the authenticated sender’s ID and trimmed
+text. This field triggers the live seat bubble; ordinary updates, repairs and
+reconnects do not replay it. The full message remains in table history. Private
+feedback never enters this path.
+
 ## Seat lifecycle
 
 A disconnected player with chips folds while betting is open. An all-in player

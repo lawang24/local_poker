@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
 export function Feedback({ name }: { name: string }) {
+  const trigger = useRef<HTMLButtonElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const connection = useRef<WebSocket | null>(null);
   const [reporter, setReporter] = useState("");
@@ -12,6 +14,7 @@ export function Feedback({ name }: { name: string }) {
 
   async function submit() {
     if (pending || !message.trim()) return;
+    heading.current?.focus({ preventScroll: true });
     setPending(true);
     setError("");
     try {
@@ -53,7 +56,7 @@ export function Feedback({ name }: { name: string }) {
   }
 
   return <>
-    <button className="feedback-button" type="button" aria-label="Feedback" title="Feedback" onClick={() => {
+    <button ref={trigger} className="feedback-button" type="button" aria-label="Feedback" title="Feedback" onClick={() => {
       if (!reporter) setReporter(name);
       setSaved(false);
       setError("");
@@ -63,21 +66,24 @@ export function Feedback({ name }: { name: string }) {
         <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" />
         <path d="M8 10h8M8 14h5" />
       </svg>
+      <span>Feedback</span>
     </button>
-    <dialog ref={dialog} className="feedback-modal" aria-labelledby="feedback-title" onCancel={event => { if (pending) event.preventDefault(); }}>
+    <dialog ref={dialog} onClose={() => trigger.current?.focus({ preventScroll: true })} className="feedback-modal typing-panel report-dialog" aria-labelledby="feedback-title" onCancel={event => { if (pending) event.preventDefault(); }}>
       <div className="feedback-heading">
-        <h2 id="feedback-title">Share feedback</h2>
+        <h2 ref={heading} tabIndex={-1} id="feedback-title">Share feedback</h2>
         <button type="button" aria-label="Close feedback" disabled={pending} onClick={() => dialog.current?.close()}>×</button>
       </div>
       {saved ? <div role="status">
         <p>Thanks! Your feedback has been saved.</p>
         <button type="button" onClick={() => dialog.current?.close()}>Done</button>
       </div> : <form onSubmit={event => { event.preventDefault(); void submit(); }}>
-        <p className="hint">Found a bug or have an idea? Feedback is private and includes your name and the time you send it.</p>
-        <label>Reporter name<input required maxLength={40} value={reporter} disabled={pending} onChange={event => setReporter(event.target.value)} autoComplete="name" /></label>
-        <label htmlFor="feedback-message">Feedback</label><textarea id="feedback-message" required autoFocus maxLength={2000} rows={6} value={message} disabled={pending} onChange={event => setMessage(event.target.value)} placeholder="What could we improve?" />
-        <span className="hint">{message.length}/2000 · Returning players are identified by their saved player profile.</span>
-        {error && <p className="error" role="alert">{error}</p>}
+        <div className="report-fields">
+          <p className="hint">Found a bug or have an idea? Feedback is private and includes your name and the time you send it.</p>
+          <label>Reporter name<input required maxLength={40} value={reporter} disabled={pending} onChange={event => setReporter(event.target.value)} autoComplete="name" /></label>
+          <label htmlFor="feedback-message">Feedback</label><textarea id="feedback-message" required maxLength={2000} rows={6} value={message} disabled={pending} onChange={event => setMessage(event.target.value)} placeholder="What could we improve?" />
+          <span className="hint">{message.length}/2000 · Returning players are identified by their saved player profile.</span>
+          {error && <p className="error" role="alert">{error}</p>}
+        </div>
         <div className="feedback-actions">
           <button type="button" disabled={pending} onClick={() => dialog.current?.close()}>Cancel</button>
           <button className="primary" disabled={pending || !message.trim() || !reporter.trim()}>{pending ? "Sending…" : "Send feedback"}</button>

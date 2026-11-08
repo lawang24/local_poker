@@ -7,7 +7,7 @@ It owns form and connection state; it does not decide game outcomes.
 
 ## State and rendering
 
-[App.tsx](../../frontend/src/App.tsx) owns name entry, chat, pending actions, and
+[App.tsx](../../frontend/src/App.tsx) owns name entry, live seat messages, pending actions, and
 connection recovery. [PokerTable.tsx](../../frontend/src/PokerTable.tsx) renders the
 felt, board, bets, and nine fixed numbered seats in server seat order. Empty seats
 are buttons that move the viewer between hands; occupied nameplates open a native
@@ -19,14 +19,19 @@ receiving a changed balance, denomination, or hand status resets the draft. The 
 supports Escape, traps focus, and restores focus when closed. Everyone sees the
 same seat positions, so moving changes both the visible position and dealing order. Desktop seats surround an oval;
 portrait layouts use two side rails close to the screen edges, with a gap for the board.
-The game shell in [App.css](../../frontend/src/App.css) fits the dynamic viewport.
+The game shell in [App.css](../../frontend/src/App.css) uses the small viewport height to keep seats fixed as browser chrome changes.
 On portrait screens, the table fills the viewport and the toolbar, chat toggle, and
 betting controls overlay reserved corner/bottom areas. Table geometry stays constant
 between hands and turns. Desktop keeps an oval and a separate chat column; short
 landscape screens also use oval seating with a fixed bottom control lane. Nameplates have two fixed lines for name
 and balance, with transient status or payout alongside the balance. Dealer markers
 stay within the screen. Empty seats use numbered outlined slots.
-The activity log scrolls inside its bounded panel rather than expanding the page.
+The bottom seat’s committed amount is anchored directly above its cards. [TableChat.tsx](../../frontend/src/TableChat.tsx)
+keeps the activity log and message draft in a desktop sidebar or, below 1024px,
+a dialog opened from the top of the table. Sending from the dialog returns focus
+to the chat button; closing without sending preserves the draft. A live chat
+appears at its sender’s seat for six seconds; another message from the same player
+replaces it. Long messages are abbreviated in the bubble and remain complete in the log.
 [TableToolbar.tsx](../../frontend/src/TableToolbar.tsx) owns a compact Options button,
 connection indicator, and Feedback in the top-right corner. Options opens a native
 modal containing Settings, Invite, Leave, and expandable table instructions. The
@@ -48,16 +53,17 @@ show card backs during play and only the server-provided result hands at showdow
 the table caption indicates automatic dealing or waiting for funded players. Stack
 editing stays in the viewer’s nameplate dialog. During the viewer's turn, a compact outlined row presents Call or Check,
 Bet/Raise, and Fold; unavailable actions are disabled. Outside their turn the
-controls render nothing and the table caption identifies the actor. Bet/Raise opens a sizing panel with numeric and slider
+controls render nothing and the table caption identifies the actor. Bet/Raise opens a native dialog without focusing an input. It has numeric and slider
 inputs plus minimum, half-pot, pot, and all-in presets. Presets only select a draft;
 an explicit confirmation sends the raise. Cancel or Escape returns to the action
 row. Pot raises include the call and then a fraction of the pot after calling;
 presets are clamped to server limits, including short all-in raises. Opening bets
 are labelled Bet, while the wire command remains `raise`. The draft resets when the hand, street, actor,
 target, or maximum changes. Buttons disable while an action is pending or the
-connection is unavailable. Below 1024px, a bottom-left toggle opens chat/activity above the table.
-The action row and raise editor overlay the bottom of the table without changing
-its dimensions. The raise editor is scrollable on short screens.
+connection is unavailable. The action row stays in place behind the dialog.
+[useTypingViewport.ts](../../frontend/src/useTypingViewport.ts) fits bet, chat and
+feedback dialogs to the visible viewport when a keyboard takes up screen space,
+without resizing the table.
 [main.tsx](../../frontend/src/main.tsx) mounts the app. React stores the latest complete
 server snapshot alongside local form and connection state. Each new snapshot
 replaces the displayed game state and clears the pending action indicator.
@@ -83,10 +89,10 @@ show the aggregate award. Existing single-board results remain supported.
 
 ## Feedback
 
-[Feedback.tsx](../../frontend/src/Feedback.tsx) renders a compact speech-bubble icon in the top-right header corner
+[Feedback.tsx](../../frontend/src/Feedback.tsx) renders a labeled Feedback button in the top-right header corner
 on the join screen, table, and Settings page. A native modal dialog contains the
 report form, traps focus, supports Escape when idle, and restores focus on close.
-Drafts survive closing the dialog and failed submissions. Sending disables duplicate
+Opening the dialog leaves the keyboard dismissed until a field is selected. Drafts survive closing the dialog and failed submissions. Sending disables duplicate
 clicks; confirmation appears only after the backend acknowledges persistence.
 The report includes 1–2000 characters. Guests supply a name; returning browser
 identities are attributed to their server-side player profile. A separate short-lived

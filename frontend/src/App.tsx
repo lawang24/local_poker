@@ -9,6 +9,9 @@ import { Feedback } from "./Feedback";
 import { TableToolbar } from "./TableToolbar";
 import { Settings } from "./Settings";
 
+import { TableChat } from "./TableChat";
+import { useTypingViewport } from "./useTypingViewport";
+
 const sessionKey = "headwins:global";
 
 export default function App() {
@@ -21,16 +24,23 @@ export default function App() {
   const [state, setState] = useState<State | null>(null);
   const [status, setStatus] = useState("Offline");
   const [error, setError] = useState("");
-  const [chat, setChat] = useState("");
+  useTypingViewport();
+  const [speech, setSpeech] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
   const [copied, setCopied] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
+  const chatDialog = useRef<HTMLDialogElement>(null);
+  const chatButton = useRef<HTMLButtonElement>(null);
   const ws = useRef<WebSocket | null>(null);
-  const log = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!joined) return;
+    const timers = new Map<string, ReturnType<typeof setTimeout>>();
+    const clearSpeech = () => {
+      timers.forEach(clearTimeout);
+      timers.clear();
+      setSpeech({});
+    };
     let stopped = false;
     let retry: ReturnType<typeof setTimeout>;
     let attempts = 0;
@@ -69,6 +79,19 @@ export default function App() {
           }
           if (msg.type === "state") {
             setState(msg.state);
+            if (msg.chat) {
+              const { player_id: id, text } = msg.chat;
+              setSpeech(current => ({ ...current, [id]: text }));
+              clearTimeout(timers.get(id));
+              timers.set(id, setTimeout(() => {
+                timers.delete(id);
+                setSpeech(current => {
+                  const next = { ...current };
+                  delete next[id];
+                  return next;
+                });
+              }, 6000));
+            }
             setPending(false);
           }
           if (msg.type === "error") {
@@ -86,6 +109,7 @@ export default function App() {
       socket.onclose = (event) => {
         if (stopped) return;
         setPending(false);
+        clearSpeech();
         if (event.code === 4002) {
           stopped = true;
           sessionStorage.removeItem(`${sessionKey}:token`);
@@ -111,28 +135,27 @@ export default function App() {
     return () => {
       stopped = true;
       clearTimeout(retry);
+      clearSpeech();
       ws.current?.close();
     };
   }, [joined]);
-  useEffect(() => {
-    log.current?.scrollTo({ top: log.current.scrollHeight });
-  }, [state?.history]);
 
   const send = (msg: Action) => {
     if (ws.current?.readyState !== WebSocket.OPEN) {
       setError("Wait until you reconnect.");
-      return;
+      return false;
     }
     setError("");
     setPending(true);
     ws.current.send(JSON.stringify(msg));
+    return true;
   };
   const me = state?.players.find((p) => p.id === state.you);
   const ready = status === "Connected" && !pending;
 
   return (
     <main className={`app ${joined && state && !settingsOpen ? "app-table" : ""}`}>
-      {joined && state ? <TableToolbar name={me?.name || name} status={status} settingsOpen={settingsOpen}
+      {joined && state ? <TableToolbar name={me?.name || name} status={status} settingsOpen={settingsOpen} chatButton={chatButton} openChat={() => chatDialog.current?.showModal()}
         settings={() => setSettingsOpen(!settingsOpen)} leave={() => {
           setSettingsOpen(false); setJoined(false); setState(null); setStatus("Offline");
           setPending(false); setError(""); sessionStorage.removeItem(`${sessionKey}:token`);
@@ -146,7 +169,6 @@ export default function App() {
             {status}
           </span>
           {state && <button aria-pressed={settingsOpen} onClick={() => setSettingsOpen(!settingsOpen)}>{settingsOpen ? "Table" : "Settings"}</button>}
-          {joined && <button className="chat-toggle" aria-expanded={chatOpen} aria-controls="table-chat" onClick={() => setChatOpen(!chatOpen)}>{chatOpen ? "Close chat" : "Chat & log"}</button>}
           {joined && (
             <button
               onClick={() => {
@@ -237,46 +259,11 @@ export default function App() {
         <>
           <div className="game-layout">
             <section className="table-area" aria-label="Poker table">
-              <PokerTable state={state} ready={ready} send={send} />
+              <PokerTable speech={speech} state={state} ready={ready} send={send} />
               <ActionControls key={`${state.hand_number}:${state.street}:${state.actor}:${state.target}:${state.max_raise_to}:${state.cents}`} state={state} ready={ready} send={send} />
             </section>
-            <aside id="table-chat" className={`panel chat-panel ${chatOpen ? "chat-open" : ""}`}>
-              <h2>Table talk</h2>
-              <div
-                className="log"
-                ref={log}
-                role="log"
-                aria-label="Table activity"
-              >
-                {state.history.length ? (
-                  state.history.map((m, i) => <p key={i}>{m}</p>)
-                ) : (
-                  <p className="hint">Welcome to the table. Say hello.</p>
-                )}
-              </div>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (!chat.trim()) return;
-                  send({ type: "chat", text: chat });
-                  setChat("");
-                }}
-              >
-                <label className="sr-only" htmlFor="chat">
-                  Chat message
-                </label>
-                <input
-                  id="chat"
-                  maxLength={300}
-                  value={chat}
-                  onChange={(e) => setChat(e.target.value)}
-                  placeholder="Message the table…"
-                />
-                <button disabled={!ready || !chat.trim()}>Send</button>
-              </form>
-            </aside>
+            <TableChat dialog={chatDialog} trigger={chatButton} history={state.history} ready={ready} send={text => send({ type: "chat", text })} />
           </div>
-          <button className="table-chat-toggle" aria-expanded={chatOpen} aria-controls="table-chat" onClick={() => setChatOpen(!chatOpen)}>{chatOpen ? "Close chat" : "Chat & log"}</button>
         </>
       )}
       {joined && state?.runout_vote && <RunoutChoice key={state.runout_vote.hand_id} state={state} ready={ready} send={send} />}
