@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Dedicated Render backend identity for Headwins Poker checkpoint and feedback persistence.
+Description: Dedicated Render backend identity for larrypokernow checkpoint and feedback persistence.
 Metadata:
   AWSToolsMetrics:
     AWSAgentToolkit: aws-cloudformation@2

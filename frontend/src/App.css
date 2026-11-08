@@ -185,7 +185,7 @@ h1 {
 /* Table shell: charcoal surface and green, black-railed felt. */
 .app { max-width: 1600px; padding: 18px 24px; }
 header { margin-bottom: 14px; }
-h1 { font-size: 20px; letter-spacing: -.6px; text-transform: uppercase; }
+h1 { font-size: 20px; letter-spacing: -.6px; }
 header .eyebrow { font-size: 9px; margin-bottom: 2px; color: #a8a8a8; }
 .panel { background: #292929; border-color: #3b3b3b; border-radius: 5px; }
 .felt {

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
+import { sessionKey } from "./session";
+
 export function Feedback({ name }: { name: string }) {
   const trigger = useRef<HTMLButtonElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -37,7 +39,7 @@ export function Feedback({ name }: { name: string }) {
         socket.onopen = () => socket.send(JSON.stringify({
           message,
           name: reporter,
-          token: sessionStorage.getItem("headwins:global:token") || localStorage.getItem("headwins:global:token"),
+          token: sessionStorage.getItem(`${sessionKey}:token`) || localStorage.getItem(`${sessionKey}:token`),
         }));
         socket.onmessage = event => {
           try {

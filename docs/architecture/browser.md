@@ -123,6 +123,7 @@ integer-unit amounts. Inputs accept increments of 0.01 in cents mode and 1 other
 ## Reconnecting to a seat
 
 The browser keeps its name and bearer token in `localStorage` across visits.
+On startup, the [storage migration](../../frontend/src/session.ts) moves names and tokens from the previous project namespace into `larrypokernow:global` within each storage area, preserving any values already under the new name.
 Tab-scoped `sessionStorage` keeps the active tab's identity and whether to reconnect
 on reload; old tab tokens take precedence and migrate to local storage after a
 successful join. Leaving clears the active tab token but retains the browser identity.

@@ -1,4 +1,4 @@
-# Headwins Poker frontend
+# larrypokernow frontend
 
 React + TypeScript + Vite. See the [project README](../README.md) for setup, gameplay, tests, and hosting.
 

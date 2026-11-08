@@ -12,7 +12,7 @@ import { Settings } from "./Settings";
 import { TableChat } from "./TableChat";
 import { useTypingViewport } from "./useTypingViewport";
 
-const sessionKey = "headwins:global";
+import { sessionKey } from "./session";
 
 export default function App() {
   const [name, setName] = useState(
@@ -162,7 +162,7 @@ export default function App() {
         }} /> : <header>
         <div>
           <p className="eyebrow">PLAY MONEY • NO-LIMIT HOLD’EM</p>
-          <h1>Headwins Poker</h1>
+          <h1>larrypokernow</h1>
         </div>
         <div className="connection-info">
           <span className={`status ${status === "Connected" ? "online" : ""}`}>

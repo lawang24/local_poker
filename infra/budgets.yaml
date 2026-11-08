@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Headwins Poker monthly cost alerts; notifications do not cap or stop spending.
+Description: larrypokernow monthly cost alerts; notifications do not cap or stop spending.
 Metadata:
   AWSToolsMetrics:
     AWSAgentToolkit: aws-cloudformation@2

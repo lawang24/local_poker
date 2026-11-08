@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Headwins Poker checkpoints and permanent poker history with fixed provisioned capacity.
+Description: larrypokernow checkpoints and permanent poker history with fixed provisioned capacity.
 Metadata:
   AWSToolsMetrics:
     AWSAgentToolkit: aws-cloudformation@2

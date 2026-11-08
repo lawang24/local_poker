@@ -1,4 +1,4 @@
-# Headwins Poker
+# larrypokernow
 
 One global play-money, no-limit Texas Hold’em game for 2–9 players. React/TypeScript renders the table; FastAPI owns the rules and sends each player a private WebSocket view.
 

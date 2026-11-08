@@ -110,7 +110,7 @@ export function PokerTable({ state, ready, send, speech }: {
         <p className="table-caption">{bonus ? `2–7 offsuit bonus +${formatAmount(bonus.total, state.cents)}` : state.runout_vote ? "Choosing runouts" : state.running ? `${players.find(p => p.id === state.actor)?.name || "Table"} to act` : eligible < 2 ? "Waiting for players with chips" : state.street === "complete" ? "Next hand starting soon" : "First hand starting soon"}</p>
         <p className="board-meta">Hand #{state.hand_number} · {state.street} · {formatAmount(state.small_blind, state.cents)} / {formatAmount(state.big_blind, state.cents)}{state.seven_deuce_bonus > 0 && ` · 2–7: ${formatAmount(state.seven_deuce_bonus, state.cents)}`}</p>
       </div>
-      <span className="felt-brand" aria-hidden="true">HEADWINS <b>POKER</b></span>
+      <span className="felt-brand" aria-hidden="true">larrypokernow</span>
     </div>
     {Array.from({ length: 9 }, (_, index) => {
       const occupant = players.find(p => p.seat === index);
