@@ -51,6 +51,7 @@ class RunoutTests(unittest.TestCase):
         self.assertEqual(t.board, [])
         view = t.state(b.id)
         self.assertEqual(view["runout_vote"]["votes"], {a.id: 2})
+        self.assertEqual(view["runout_vote"]["hands"], {a.id: a.hand, b.id: b.hand})
         self.assertNotIn(a.token, json.dumps(view))
         self.assertNotIn("deck_order", json.dumps(view))
         self.assertFalse(any("hand" in p for p in view["players"]))

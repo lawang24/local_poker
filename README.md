@@ -52,7 +52,7 @@ at `http://127.0.0.1:8001/health`; Vite's default health proxy still targets 800
 - A completed hand stays visible for five seconds before the next automatic deal, provided two connected players have chips. There is no mid-hand restart.
 - When all-in betting closes before the river, everyone still in the hand chooses **Run once** or **Run twice**. Two runs require unanimous agreement within 20 seconds; one-run votes, timeouts, or a disconnected contender mean one run. Existing community cards are shared, each pot is split between runs, and both boards and awards appear at showdown.
 - New arrivals wait for the next hand. Disconnecting during betting folds a player with chips; during a runout choice it settles once without folding; an all-in player remains eligible. Reload restores the same seat using its saved browser identity, but a hand already folded remains folded. Reconnecting the same token elsewhere replaces the old socket.
-- Chat and the last 100 activity messages are shared by everyone at the table. Hole cards stay private until a contested showdown or a winning 2–7 bonus reveal.
+- Chat and the last 100 activity messages are shared by everyone at the table. After an all-in closes betting, remaining hands turn face up. At an ordinary showdown, the table automatically mucks beaten hands in show order. A fold win automatically shows the winner’s cards only for a 2–7 bonus. After any hand, you can show either hole card or choose **Show All Cards** before the next deal. Doing nothing keeps your hidden cards private.
 
 ## DynamoDB and budget alerts
 

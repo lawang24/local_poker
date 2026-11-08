@@ -109,6 +109,10 @@ commit together before accepting connections; the next join opens a new session.
 Session end timestamps after a crash indicate when recovery detected closure,
 not an inferred crash time. Recovery still cancels rather than resumes a hand.
 
+After settlement, voluntary card reveals update the checkpointed result. Each
+`cards_revealed` event records the newly shown cards against the completed
+hand while its original settlement summary retains the payouts and cards tabled at showdown.
+
 Runout offers, choices and resolution reasons are saved as ordered private hand
 events. Completion records and the checkpoint result retain both boards and
 per-run awards along with aggregate net chips. Pending votes and their timer are

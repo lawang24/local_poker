@@ -242,6 +242,8 @@ async def websocket_endpoint(websocket: WebSocket):
                         server.table.start(player.id)
                     elif kind in {"fold", "check_call", "raise"}:
                         server.table.act(player.id, kind, data.get("amount"))
+                    elif kind == "reveal_cards":
+                        server.table.reveal_cards(player.id, data.get("hand_number"), data.get("cards"))
                     elif kind == "runout":
                         server.table.choose_runouts(player.id, data.get("count"),
                                                     data.get("hand_id"))

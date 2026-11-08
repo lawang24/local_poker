@@ -229,13 +229,13 @@ header .eyebrow { font-size: 9px; margin-bottom: 2px; color: #a8a8a8; }
 .table-bet i { display: block; width: 21px; height: 21px; border-radius: 50%; background: #d6d668; border: 3px dashed #eeeaa5; box-shadow: 0 2px 0 #9e9b3f; }
 .seat-payout { position: absolute; right: 0; bottom: -16px; color: #d5e398; font-size: 12px; font-weight: 700; }
 .table-stage .felt { inset: 18% 16%; }
-.is-acting .nameplate { background: #f5f5f5; box-shadow: 0 0 24px #ffffff65; }
-.is-acting .nameplate strong, .is-acting .seat-balance { color: #252525; }
+:is(.is-acting, .is-winner) .nameplate { background: #f5f5f5; box-shadow: 0 0 24px #ffffff65; }
+:is(.is-acting, .is-winner) .nameplate strong, :is(.is-acting, .is-winner) .seat-balance { color: #252525; }
 .is-acting .player-status { color: #555; }
 .is-folded .seat-cards { opacity: .25; }
 .is-folded .nameplate, .is-disconnected .nameplate { opacity: .5; }
-.is-winner .nameplate { box-shadow: 0 0 20px #dfdf8b66; }
-.is-winner .seat-balance { color: #e4e599; }
+.is-winner .nameplate { opacity: 1; }
+.is-winner .seat-payout { color: #27542e; }
 
 .action-controls { display: flex; align-items: center; gap: 24px; padding: 16px 18px; background: #202020ed; border: 1px solid #393939; border-radius: 5px; }
 .action-status { width: 170px; flex-shrink: 0; font-size: 14px; font-weight: 600; color: #eee; }
@@ -648,7 +648,7 @@ button.nameplate:hover, button.nameplate:focus-visible { border-color: #ddd; }
 /* Reference card geometry: 61:74 faces, a seven-degree fan, and shared back sizing. */
 .app-table .table-seat { --seat-unit: min(1.8vw, 3.2dvh); --card-unit: var(--seat-unit); }
 .app-table .nameplate { z-index: 2; background: #2c2c2c; }
-.app-table .is-acting .nameplate { background: #f5f5f5; }
+.app-table :is(.is-acting, .is-winner) .nameplate { background: #f5f5f5; }
 .app-table .seat-cards { width: calc(5.4 * var(--card-unit)); height: calc(3.7 * var(--card-unit)); transform: none; }
 .app-table .seat-cards .cards, .app-table .card-backs { position: relative; width: 100%; height: 100%; padding: 0; }
 .app-table .seat-cards .card, .app-table .card-backs span {
@@ -680,6 +680,45 @@ button.nameplate:hover, button.nameplate:focus-visible { border-color: #ddd; }
   .app-table .seat-cards .cards, .app-table .card-backs { top: calc(.1 * var(--seat-unit)); }
 }
 
+
+.concealed-card {
+  border: 2px solid #eee;
+  background: repeating-linear-gradient(125deg, #bd6666 0 2px, #c36d6d 2px 4px);
+}
+
+/* The ribbon straddles the bottom edge of the hole cards. */
+.hand-strength {
+  --badge-unit: var(--seat-unit);
+  position: absolute; z-index: 4; pointer-events: none;
+  top: calc(3.3 * var(--seat-unit)); left: calc(-.8 * var(--seat-unit));
+  width: calc(5.9 * var(--badge-unit)); display: flex; justify-content: center;
+}
+.hand-badge {
+  min-width: calc(2.5 * var(--badge-unit)); overflow: hidden;
+  border-radius: calc(.2 * var(--badge-unit));
+  background: #f75757; color: white; box-shadow: 0 0 calc(.2 * var(--badge-unit)) #0008;
+  font: 400 calc(.5 * var(--badge-unit))/1.5 Mulish, sans-serif;
+  text-align: center; text-transform: uppercase;
+}
+.hand-name { position: relative; padding-inline: calc(.4 * var(--badge-unit)); white-space: nowrap; }
+.two-runs .hand-badge { font-size: calc(.42 * var(--badge-unit)); }
+.two-runs .hand-name {
+  padding-inline: calc(.8 * var(--badge-unit)) calc(.2 * var(--badge-unit));
+  line-height: calc(.65 * var(--badge-unit));
+}
+.two-runs .hand-name + .hand-name { background: #d82525; }
+.hand-name.won-run, .two-runs .hand-name.won-run { background: #6d64e0; font-weight: 700; }
+.run-number { position: absolute; left: 0; width: calc(.7 * var(--badge-unit)); opacity: .4; }
+.won-run .run-number { opacity: 1; }
+@media (max-width: 1023px) and (min-height: 501px), (max-width: 600px) {
+  .hand-strength {
+    --badge-unit: calc(.7 * var(--seat-unit));
+    top: calc(1.86 * var(--seat-unit)); left: auto; right: 0; width: auto; max-width: 100%;
+  }
+  .hand-strength.two-runs { top: calc(1.76 * var(--seat-unit)); }
+  .hand-strength:not(.two-runs) .hand-name { padding-inline: calc(.2 * var(--badge-unit)); }
+  .two-runs .hand-name { line-height: calc(.6 * var(--badge-unit)); }
+}
 
 /* Keep card artwork at its native proportions on both the board and in a hand. */
 .app-table .community-cards .card { aspect-ratio: 61 / 74; }

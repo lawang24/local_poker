@@ -24,24 +24,35 @@ function Seat({ player, state, index, count, select, speech }: {
   const y = 50 + 37 * Math.cos(angle);
   const [mx, my] = portraitPosition(index, count);
   const mine = player.id === state.you;
-  const cards = mine ? state.hand : state.result?.hands[player.id] || [];
+  const cards = mine ? state.hand : state.result?.hands[player.id] ?? state.runout_vote?.hands?.[player.id] ?? [];
   const covered = !mine && state.running && player.in_hand && !player.folded;
   const acting = state.actor === player.id;
   const payout = state.result?.payouts[player.id] || 0;
+  const result = state.result;
+  const strengths = mine ? state.hand_strengths : state.shown_hand_strengths?.[player.id];
+  const shownIndices = result?.shown_indices?.[player.id];
+  const slots = !mine && cards.length === 1 && shownIndices
+    ? [0, 1].map(i => shownIndices.includes(i) ? cards[0] : null) : cards;
+  // Per-run pots exclude uncalled chip returns. Fold wins have no runouts.
+  const wonRuns = result?.runouts?.map(run =>
+    run.pots.some(pot => pot.amount > 0 && pot.winners.includes(player.id)));
+  const winner = wonRuns?.length
+    ? wonRuns.some(Boolean)
+    : result?.pots.some(pot => pot.winners.includes(player.id));
   const label = !player.connected ? "Disconnected" : player.folded ? "Folded"
     : player.all_in && state.running ? "All-in" : acting ? "To act"
     : !player.in_hand && state.running ? "Next hand" : "";
   return <article
-    className={`table-seat ${mine ? "is-you" : ""} ${acting ? "is-acting" : ""} ${player.folded ? "is-folded" : ""} ${!player.connected ? "is-disconnected" : ""} ${payout ? "is-winner" : ""}`}
+    className={`table-seat ${mine ? "is-you" : ""} ${acting ? "is-acting" : ""} ${player.folded ? "is-folded" : ""} ${!player.connected ? "is-disconnected" : ""} ${winner ? "is-winner" : ""}`}
     style={{ "--seat-x": `${x}%`, "--seat-y": `${y}%`, "--mobile-x": `${mx}%`, "--mobile-y": `${my}%` } as CSSProperties}
     data-seat={index + 1}
-    aria-label={`${player.name}${mine ? ", you" : ""}, ${formatAmount(player.stack, state.cents)} chips${label ? `, ${label}` : ""}`}
+    aria-label={`${player.name}${mine ? ", you" : ""}, ${formatAmount(player.stack, state.cents)} chips${winner ? ", winner" : ""}${label ? `, ${label}` : ""}`}
   >
     {speech && <div className="seat-speech"><span>{speech}</span></div>}
     {index === 0 && state.running && player.committed > 0 && <div className="table-bet south-bet" aria-label={`${player.name} bet ${formatAmount(player.committed, state.cents)}`}>{formatAmount(player.committed, state.cents)}</div>}
     <div className="seat-body">
       <div className="seat-cards">
-        {cards.length ? <Cards cards={cards} hole /> : covered ? <div className="card-backs" aria-label="Two hidden cards"><span /><span /></div> : <div className="empty-cards" aria-hidden="true">{player.folded ? "×" : ""}</div>}
+        {cards.length ? <Cards cards={slots} hole /> : covered ? <div className="card-backs" aria-label="Two hidden cards"><span /><span /></div> : <div className="empty-cards" aria-hidden="true">{player.folded ? "×" : ""}</div>}
       </div>
       <button type="button" className="nameplate" onClick={select} aria-label={`Player options for ${player.name}`}>
         <strong title={player.name}>{player.name}</strong>
@@ -49,6 +60,15 @@ function Seat({ player, state, index, count, select, speech }: {
         {payout > 0 && <span className="seat-payout">+{formatAmount(payout, state.result?.cents ?? state.cents)}</span>}
         {label && !payout && <span className="player-status">{label}</span>}
       </button>
+      {!!strengths?.length && <div className={`hand-strength ${strengths.length > 1 ? "two-runs" : ""}`} aria-live="polite">
+        <span className="sr-only">{mine ? "Your" : player.name + "’s"} made hand: </span>
+        <div className="hand-badge">
+          {strengths.map((strength, i) => <div key={i} className={`hand-name ${wonRuns?.[i] ? "won-run" : ""}`}>
+            {strengths.length > 1 && <><span className="sr-only">Run {i + 1}: </span><span className="run-number" aria-hidden="true">#{i + 1}</span></>}
+            {strength}{wonRuns?.[i] && <span className="sr-only">, winner</span>}
+          </div>)}
+        </div>
+      </div>}
       {player.id === state.dealer && <span className="dealer-marker" title="Dealer" aria-label="Dealer">D</span>}
     </div>
   </article>;

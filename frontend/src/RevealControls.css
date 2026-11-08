@@ -1,0 +1,67 @@
+@font-face {
+  font-family: Mulish;
+  src: url("./assets/fonts/mulish-latin-700-normal.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
+.reveal-controls {
+  --unit: min(5.76vw, 3.2svh);
+  --row: max(44px, calc(2 * var(--unit)));
+  --line: max(1px, calc(.07 * var(--unit)));
+  position: absolute;
+  z-index: 8;
+  right: max(calc(.2 * var(--unit)), env(safe-area-inset-right));
+  bottom: max(calc(.4 * var(--unit)), env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) repeat(2, minmax(44px, 1fr));
+  width: min(100%, max(220px, calc(10.45 * var(--unit))));
+  overflow: hidden;
+  border: var(--line) solid #139249;
+  border-bottom-width: calc(2 * var(--line));
+  border-radius: calc(.21 * var(--unit));
+  font: 700 max(11px, calc(.49 * var(--unit)))/1 Mulish, sans-serif;
+  color: #38bd70;
+}
+.reveal-controls button {
+  position: relative;
+  height: var(--row);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-transform: uppercase;
+}
+.reveal-controls button + button { border-left: var(--line) solid #139249; }
+.reveal-controls button span { display: none; }
+.reveal-controls button:disabled { opacity: 1; cursor: default; }
+.reveal-controls button[aria-pressed="true"],
+.reveal-controls button:hover:not(:disabled) { background: #38ad70; color: white; }
+.reveal-controls button:focus-visible { outline-offset: -3px; }
+
+@media (min-width: 1024px) {
+  .reveal-controls {
+    --unit: 1.8cqw;
+    right: 1.25%;
+    bottom: 1.6%;
+    width: max(170px, calc(8.22 * var(--unit)));
+    grid-template-columns: repeat(2, 1fr);
+    border-radius: calc(.3 * var(--unit));
+    font-size: max(13px, calc(.7 * var(--unit)));
+  }
+  .reveal-controls button:first-child { grid-column: 1 / -1; }
+  .reveal-controls button + button {
+    height: calc(var(--row) + var(--line));
+    border-top: var(--line) solid #139249;
+  }
+  .reveal-controls button:nth-child(2) { border-left: 0; }
+  .reveal-controls button span {
+    display: block;
+    position: absolute;
+    right: calc(.2 * var(--unit));
+    top: calc(.2 * var(--unit));
+    font-size: max(8px, calc(.4 * var(--unit)));
+  }
+}

@@ -24,6 +24,8 @@ export type State = TableSettings & {
   running: boolean;
   board: string[];
   hand: string[];
+  hand_strengths: string[];
+  shown_hand_strengths?: Record<string, string[]>;
   pot: number;
   target: number;
   queued_stack: number | null;
@@ -37,13 +39,16 @@ export type State = TableSettings & {
   runout_vote: null | {
     hand_id: string;
     eligible: string[];
+    hands?: Record<string, string[]>;
     votes: Record<string, number>;
     deadline: string;
   };
   result: null | {
     cents?: boolean;
     payouts: Record<string, number>;
+    pots: { amount: number; winners: string[] }[];
     hands: Record<string, string[]>;
+    shown_indices?: Record<string, number[]>;
     seven_deuce_bonus?: { winner: string; payments: Record<string, number>; total: number } | null;
     runouts?: { board: string[]; payouts: Record<string, number>; pots: { amount: number; winners: string[]; runout: number }[] }[];
   };

@@ -1,6 +1,7 @@
+import json
 import random
 import unittest
-from game import Table, InvalidAction
+from game import Table, InvalidAction, made_hand
 
 
 class PokerTests(unittest.TestCase):
@@ -12,6 +13,76 @@ class PokerTests(unittest.TestCase):
 
     def total(self, t):
         return sum(p.stack for p in t.players) + t.pot
+
+    def test_made_hand_categories(self):
+        for cards, label in [
+            ("As 2h 9h 7h 3h", "High card"),  # Four hearts are only a draw.
+            ("As 2h 9h 7h 2d", "Pair (2)"), ("As 2h Ad 2d 3h", "Two pair (A,2)"),
+            ("As 2h Ad 2d Ts Th 3h", "Two pair (A,10)"),
+            ("As 2h Ad Ac 3h", "Three of a kind"),
+            ("As 2h 3d 4s 5h", "Straight"), ("As 2s 9s 7s 3s", "Flush"),
+            ("As 2h Ad 2d Ah", "Full house"), ("As 2h Ad Ac Ah", "Four of a kind"),
+            ("As 2s 3s 4s 5s", "Straight flush"),
+            ("2h 3h As Ks Qs Js Ts", "Royal flush"),  # Both hole cards play no part.
+        ]:
+            with self.subTest(cards=cards):
+                hole, board = cards.split()[:2], cards.split()[2:]
+                self.assertEqual(made_hand(hole, board), label)
+
+    def test_strength_is_per_viewer_and_per_board(self):
+        t = self.table((100, 100))
+        a, b = t.players
+        self.assertEqual(t.state(a.id)["hand_strengths"], [])
+        t.start(a.id)
+        self.assertEqual(t.state(a.id)["hand_strengths"], [])
+        a.hand, b.hand = ["Ah", "Ad"], ["Ks", "Qd"]
+        t.board = ["Kh", "Kd", "5c"]
+        self.assertEqual(t.state(a.id)["hand_strengths"], ["Two pair (A,K)"])
+        self.assertEqual(t.state(b.id)["hand_strengths"], ["Three of a kind"])
+        self.assertEqual(t.state(a.id)["shown_hand_strengths"], {})
+        self.assertTrue(all("hand_strengths" not in p for p in t.state(a.id)["players"]))
+        t.finish([t.board + ["2d", "3s"], t.board + ["Ac", "3h"]])
+        self.assertEqual(t.state(a.id)["hand_strengths"], ["Two pair (A,K)", "Full house"])
+        t.start(a.id)
+        t.act(t.actor, "fold")
+        folded = next(p for p in t.players if p.folded)
+        self.assertEqual(t.state(folded.id)["hand_strengths"], [])
+
+    def test_labels_follow_public_reveals(self):
+        t = self.table((100, 100))
+        a, b = t.players
+        t.start(a.id)
+        t.act(a.id, "check_call")
+        t.act(b.id, "check_call")
+        t.act(b.id, "fold")
+
+        def view():
+            return t.state(a.id)["shown_hand_strengths"]
+
+        self.assertEqual(view(), {})
+        t.reveal_cards(b.id, t.hand_number, [1])
+        self.assertEqual(view(), {})
+        t.reveal_cards(b.id, t.hand_number, [0])
+        self.assertEqual(view(), {b.id: [made_hand(b.hand, t.board)]})
+        t.start(a.id)
+        self.assertEqual(view(), {})
+
+    def test_face_up_all_in_strengths_use_each_visible_board(self):
+        t = self.table((100, 100))
+        a, b = t.players
+        t.start(a.id)
+        t.act(a.id, "check_call")
+        t.act(b.id, "check_call")
+        t.act(b.id, "raise", b.stack)
+        t.act(a.id, "check_call")
+        for viewer in (a, b):
+            self.assertEqual(t.state(viewer.id)["shown_hand_strengths"],
+                             {p.id: [made_hand(p.hand, t.board)] for p in (a, b)})
+        for p in (a, b):
+            t.choose_runouts(p.id, 2, t.hand_id)
+        boards = [run["board"] for run in t.result["runouts"]]
+        self.assertEqual(t.state(b.id)["shown_hand_strengths"],
+                         {p.id: [made_hand(p.hand, board) for board in boards] for p in (a, b)})
 
     def test_blinds_and_positions(self):
         t = self.table()
@@ -91,6 +162,68 @@ class PokerTests(unittest.TestCase):
         self.assertEqual(t.pot, 0)
         self.assertEqual(self.total(t), 200)
         self.assertEqual(t.hand_number, 1)
+        self.assertEqual(t.result["hands"], {})
+
+    def test_voluntary_reveals_are_additive_and_scoped_to_the_completed_hand(self):
+        t = self.table((100, 100))
+        a, b = t.players
+        t.start(a.id)
+        with self.assertRaises(InvalidAction):
+            t.reveal_cards(a.id, t.hand_number, [0])
+        t.act(a.id, "fold")
+        observer = t.join("Observer")
+        with self.assertRaises(InvalidAction):
+            t.reveal_cards(observer.id, t.hand_number, [0])
+        for invalid in (None, [], "both", [0, True], [2], [0, 0], [0, 1, 0]):
+            with self.assertRaises(InvalidAction):
+                t.reveal_cards(a.id, t.hand_number, invalid)
+        self.assertEqual(t.result["hands"], {})
+
+        t.reveal_cards(a.id, t.hand_number, [1])
+        self.assertEqual(t.state(b.id)["result"]["hands"], {a.id: [a.hand[1]]})
+        self.assertEqual(t.result["shown_indices"], {a.id: [1]})
+        self.assertNotIn(json.dumps(a.hand[0]), json.dumps(t.state(b.id)))
+        sequence = t.event_sequence
+        t.reveal_cards(a.id, t.hand_number, [1])
+        self.assertEqual(t.event_sequence, sequence)
+        t.reveal_cards(b.id, t.hand_number, [0, 1])
+        t.reveal_cards(a.id, t.hand_number, [0])
+        self.assertEqual(t.state(observer.id)["result"]["hands"], {a.id: a.hand, b.id: b.hand})
+        self.assertEqual(t.result["shown_indices"], {a.id: [0, 1], b.id: [0, 1]})
+        old_number = t.hand_number
+        t.start(a.id)
+        while t.running:
+            t.act(t.actor, "fold")
+        with self.assertRaises(InvalidAction):
+            t.reveal_cards(a.id, old_number, [0, 1])
+        self.assertEqual(t.result["hands"], {})
+
+    def test_show_order_and_automatic_muck(self):
+        for river_action in ("checked", "bet", "reraised", "tie"):
+            with self.subTest(river_action=river_action):
+                t = self.table()
+                a, b, c = t.players
+                t.start(a.id)
+                while t.street != "river":
+                    t.act(t.actor, "check_call")
+                t.board = "2c 3d 7h 8s 9c".split()
+                a.hand, b.hand, c.hand = ["Qh", "Qd"], ["Ah", "Ad"], ["Kh", "Kd"]
+                if river_action == "tie":
+                    a.hand, b.hand = ["As", "Qc"], ["Ah", "Qd"]
+                    c.hand = ["Js", "4d"]
+                t.act(b.id, "check_call")
+                if river_action in ("bet", "reraised"):
+                    t.act(c.id, "raise", 10)
+                if river_action == "reraised":
+                    t.act(a.id, "raise", 20)
+                while t.running:
+                    t.act(t.actor, "check_call")
+                expected = {"checked": [b], "bet": [c, b], "reraised": [a, b],
+                            "tie": [b, a]}[river_action]
+                for viewer in t.players:
+                    state = t.state(viewer.id)
+                    self.assertEqual(list(state["result"]["hands"]), [p.id for p in expected])
+                    self.assertEqual(state["hand"], viewer.hand)
 
     def test_all_in_offers_runout_choice(self):
         t = self.table((5, 8))

@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
 import { formatAmount, inputAmount, parseAmount } from "./amounts";
+import { RevealControls } from "./RevealControls";
 import type { State } from "./types";
 
-export type Action = { type: string; seat?: number; player_id?: string; amount?: number; text?: string; small_blind?: number; big_blind?: number; seven_deuce_bonus?: number; cents?: boolean; count?: number; hand_id?: string };
+export type Action = { type: string; seat?: number; player_id?: string; amount?: number; text?: string; small_blind?: number; big_blind?: number; seven_deuce_bonus?: number; cents?: boolean; count?: number; hand_id?: string; hand_number?: number; cards?: number[] };
 
 export function ActionControls({ state, ready, send }: {
   state: State; ready: boolean; send: (action: Action) => void;
@@ -22,6 +23,9 @@ export function ActionControls({ state, ready, send }: {
   const selectAmount = (value: number) => setRaiseTo(inputAmount(Math.max(minimum, Math.min(state.max_raise_to, Math.round(value))), state.cents));
   // A pot-sized raise includes the call, then raises by the pot after calling.
   const potRaise = (fraction: number) => me.committed + state.call_amount + (state.pot + state.call_amount) * fraction;
+  if (state.street === "complete" && state.result && state.hand.length === 2) {
+    return <RevealControls state={state} ready={ready} send={send} />;
+  }
   if (!myTurn) return null;
   return <section className={`action-controls ${state.running ? "is-playing" : ""} ${myTurn ? "is-your-turn" : ""}`} aria-label="Game controls">
     <div className="action-status" role="status">

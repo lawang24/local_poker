@@ -86,8 +86,11 @@ package is declared in [requirements.txt](../../backend/requirements.txt).
 
 `Table.state(viewer)` is the privacy boundary. It includes public seat information,
 the board and betting state, the viewer's hole cards, and server-computed action
-limits. A contested showdown exposes the remaining hands in the result. An
-uncontested 2–7 bonus reveals only the winner's hand. Session tokens are sent in the joining player's
+limits. From the flop onward the showdown evaluator names the viewer’s live hand and each fully exposed hand against the current board or each completed runout. Pair and two-pair labels identify the paired ranks. The engine derives public labels from the actual revealed cards. An opponent’s hidden or partially shown hand stays unlabelled. After an all-in closes betting, the server tables every live contender immediately, including during the runout vote. At an ordinary river showdown it starts with the last river bettor or raiser, or the first live seat left of the dealer on a checked river. Going clockwise, the first player tables, followed by each player who ties or beats the best hand shown so far. The server automatically mucks a beaten hand. Folded hands stay private at settlement. A fold win automatically shows the winner’s cards only when the 2–7 bonus requires them as proof. This show order and all-in policy follows [Poker TDA rules 17 and 18](https://www.pokertda.com/view-poker-tda-rules/).
+
+Until the next deal, any dealt player can voluntarily reveal either hole card or both, including after folding or being mucked. The server adds only the selected cards to the public result in deal order. Reveals are permanent for that result, survive reconnects and completed-hand checkpoints, and leave payouts and the next-deal timer intact.
+
+Session tokens are sent in the joining player's
 session response, not in table snapshots.
 
 The server sends these views through the [connection module](connections.md).

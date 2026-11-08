@@ -49,10 +49,15 @@ artwork with a compact corner rank and vector suit above the covered portion;
 desktop seats place the larger cards beside the label. Both variants use native
 61:74 artwork, so ranks and suits are never stretched. The deck README records
 the font source and retained SIL Open Font License. Opponents
-show card backs during play and reveal only the server-provided result hands at
-showdown or after an uncontested 2–7 bonus.
-[ActionControls.tsx](../../frontend/src/ActionControls.tsx) owns the raise form and in-hand actions. Between hands it renders nothing;
-the table caption indicates automatic dealing or waiting for funded players. Stack
+show card backs during betting and render the hole cards the server tables during an all-in runout vote or at settlement. Seats that win a pot use the same white nameplate as the active player. Receiving an uncalled bet back alone does not highlight a seat. A compact uppercase ribbon overlays the lower edge of the hole cards from the flop onward. The viewer sees their own live hand and the same ribbon on fully exposed opponents. On portrait screens it sits at the right edge of the seat. A two-board result stacks numbered rows, and a winning run turns purple. The browser reads each label from the server snapshot.
+[ActionControls.tsx](../../frontend/src/ActionControls.tsx) owns the raise form and in-hand actions.
+After settlement it mounts [RevealControls.tsx](../../frontend/src/RevealControls.tsx)
+for players with cards they can voluntarily show. The bottom-right group puts
+**Show All Cards** above the individual card buttons on desktop and beside them on mobile.
+Desktop shortcuts S, 1, and 2 mirror the buttons. The group fills accepted choices in
+green and stays visible until the next deal. Opponents see each shown card in its original
+position with a back in the hidden slot. The table caption indicates automatic dealing
+or waiting for funded players. Stack
 editing stays in the viewer’s nameplate dialog. During the viewer's turn, a compact outlined row presents Call or Check,
 Bet/Raise, and Fold; unavailable actions are disabled. Outside their turn the
 controls render nothing and the table caption identifies the actor. Bet/Raise opens a native dialog without focusing an input. It has numeric and slider

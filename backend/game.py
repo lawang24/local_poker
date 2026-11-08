@@ -22,6 +22,25 @@ def chips(value):
     return value
 
 
+# Upper bounds in phevaluator's 1 (best) to 7462 (worst) rank scale.
+_MADE_HAND_RANKS = (
+    (1, "Royal flush"), (10, "Straight flush"), (166, "Four of a kind"),
+    (322, "Full house"), (1599, "Flush"), (1609, "Straight"),
+    (2467, "Three of a kind"), (3325, "Two pair"), (6185, "Pair"), (7462, "High card"),
+)
+
+
+def made_hand(hand, board):
+    cards = hand + board
+    rank = evaluate_cards(*cards)
+    label = next(name for limit, name in _MADE_HAND_RANKS if rank <= limit)
+    if label in ("Pair", "Two pair"):
+        ranks = [card[0] for card in cards]
+        pairs = [r.replace("T", "10") for r in "AKQJT98765432" if ranks.count(r) == 2]
+        return f"{label} ({','.join(pairs[:2])})"
+    return label
+
+
 @dataclass
 class Player:
     id: str
@@ -43,6 +62,7 @@ class Table:
     def __init__(self):
         self.players = []
         self.dealer = None
+        self.river_aggressor = None
         self.actor = None
         self.street = "waiting"
         self.board = []
@@ -256,6 +276,7 @@ class Table:
         self.deck = DeckOfCards()
         self.deck.shuffle()
         self.board, self.pot, self.result = [], 0, None
+        self.river_aggressor = None
         self.runout_vote = None
         self.target, self.min_raise = self.big_blind, self.big_blind
         self.hand_number += 1
@@ -344,6 +365,8 @@ class Table:
                 if increase >= self.min_raise:
                     self.min_raise = increase
                 self.target = total
+                if self.street == "river":
+                    self.river_aggressor = p.id
                 self.pending.update(
                     q.id
                     for q in self.live()
@@ -421,6 +444,7 @@ class Table:
         self.runout_vote = {
             "hand_id": self.hand_id,
             "eligible": [p.id for p in self.live()],
+            "hands": {p.id: p.hand for p in self.live()},
             "votes": {},
             "deadline": (datetime.now(timezone.utc) + timedelta(seconds=20)).isoformat(),
         }
@@ -502,11 +526,32 @@ class Table:
             return {"winner": winner.id, "payments": payments, "total": total}
         return None
 
+    def showdown_hands(self, live, ranks):
+        if any(p.stack == 0 for p in live):
+            return {p.id: p.hand for p in live}
+
+        # In show order, table the first hand and every hand that ties or beats it.
+        remaining = {p.id for p in live}
+        seat = self.river_aggressor
+        if seat not in remaining:
+            seat = self.clockwise(seat or self.dealer, remaining)
+        best = None
+        shown = {}
+        while remaining:
+            rank = ranks[seat]
+            if best is None or rank <= best:
+                shown[seat] = self.player(seat).hand
+                best = rank
+            remaining.remove(seat)
+            seat = self.clockwise(seat, remaining)
+        return shown
+
     def finish(self, boards=None):
         live = self.live()
         boards = boards or [list(self.board)]
         payouts = {p.id: 0 for p in self.players}
         pots = []
+        shown = {}
         runouts = [{"board": board, "payouts": {}, "pots": []} for board in boards]
 
         def award(amount, winners, runout=None):
@@ -537,6 +582,7 @@ class Table:
             previous = 0
             ranks = [{p.id: evaluate_cards(*(board + p.hand)) for p in live}
                      for board in boards]
+            shown = self.showdown_hands(live, ranks[0])
             for level in sorted(
                 {p.contribution for p in self.players if p.contribution > 0}
             ):
@@ -565,12 +611,13 @@ class Table:
         for p in self.players:
             p.stack += payouts[p.id]
         bonus = self.settle_seven_deuce(live, runouts)
-        revealed = live if len(live) > 1 or bonus else []
+        if bonus:
+            shown[bonus["winner"]] = self.player(bonus["winner"]).hand
         self.result = {
             "cents": self.cents,
             "payouts": payouts,
             "pots": pots,
-            "hands": {p.id: p.hand for p in revealed},
+            "hands": shown,
             "seven_deuce_bonus": bonus,
             "runouts": runouts if len(live) > 1 else [],
         }
@@ -601,6 +648,28 @@ class Table:
         self.street = "complete"
         self.runout_vote = None
         self.apply_queued_edits()
+
+    def reveal_cards(self, player_id, hand_number, indices):
+        if (self.street != "complete" or not self.result
+                or type(hand_number) is not int or hand_number != self.hand_number):
+            raise InvalidAction("Reveal cards only from the just-completed hand.")
+        p = self.player(player_id)
+        if not p.connected or not p.in_hand or len(p.hand) != 2:
+            raise InvalidAction("Only players dealt into this hand can reveal cards.")
+        if (not isinstance(indices, list) or not 1 <= len(indices) <= 2
+                or any(type(i) is not int or i not in (0, 1) for i in indices)
+                or len(set(indices)) != len(indices)):
+            raise InvalidAction("Choose one or both hole cards.")
+
+        shown = self.result["hands"].get(player_id, [])
+        new_cards = [card for i, card in enumerate(p.hand) if i in indices and card not in shown]
+        if new_cards:
+            self.result["hands"][player_id] = [card for card in p.hand if card in shown or card in new_cards]
+            self.result.setdefault("shown_indices", {})[player_id] = [
+                i for i, card in enumerate(p.hand) if card in self.result["hands"][player_id]
+            ]
+            self.record("cards_revealed", hand_id=self.hand_id, player_id=player_id, cards=new_cards)
+            self.log(f"{p.name} shows {' and '.join(new_cards)}.")
 
     def disconnect(self, player_id):
         p = self.player(player_id)
@@ -702,6 +771,20 @@ class Table:
             and max_total > self.target
             and any(q.id != viewer and q.stack > 0 for q in self.live())
         )
+        result = self.result or {}
+        boards = [run["board"] for run in result.get("runouts") or []] or [self.board]
+        shown = (self.runout_vote or result).get("hands", {})
+        shown_strengths = {}
+        strengths = []
+        if len(boards[0]) >= 3:
+            shown_strengths = {
+                pid: [made_hand(hand, board) for board in boards]
+                for pid, hand in shown.items() if len(hand) == 2
+            }
+            if viewer in shown_strengths:
+                strengths = shown_strengths[viewer]
+            elif p.hand and not p.folded:
+                strengths = [made_hand(p.hand, board) for board in boards]
         return {
             "players": [
                 {
@@ -727,6 +810,8 @@ class Table:
             "running": self.running,
             "board": self.board,
             "hand": p.hand,
+            "hand_strengths": strengths,
+            "shown_hand_strengths": shown_strengths,
             "pot": self.pot,
             "target": self.target,
             "small_blind": self.small_blind,

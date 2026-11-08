@@ -358,10 +358,12 @@ def run(feedback_only=False):
                 and player_stack(a) == 9999 and state(a)["queued_stack"] is None,
             )
             expect(a.locator(".community-cards img")).to_have_count(5)
-            check(
-                "Showdown exposes both eligible hands",
-                len(state(a)["result"]["hands"]) == 2,
-            )
+            result = state(a)["result"]
+            winners = result["runouts"][0]["pots"][0]["winners"]
+            check("Checked river shows the first seat left of the dealer and every winner",
+                  set(result["hands"]) == {bid, *winners})
+            for page in (a, b):
+                expect(page.locator(".is-winner")).to_have_count(len(winners))
             a.screenshot(path=str(OUT / "desktop-showdown.png"), full_page=True)
             a.reload()
             ready(a)

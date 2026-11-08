@@ -42,6 +42,7 @@ All messages are JSON text over `/ws`. Clients join before sending game commands
 | Client → server | `fold`, `check_call` | Act on the current turn. |
 | Client → server | `raise` | `amount` is the total commitment for this street. |
 | Client → server | `runout` | `count` is integer 1 or 2; `hand_id` must match the pending offer. Only connected contenders may vote, once per hand. |
+| Client → server | `reveal_cards` | `hand_number` identifies the completed hand. `cards` lists one or both distinct zero-based positions in the sender’s own hand. Repeating a reveal leaves it public. |
 | Client → server | `set_stack` | `amount` requests the player’s total balance. During a hand it replaces their queued total. |
 | Client → server | `settings` | Any joined player sets integer `small_blind`, `big_blind`, boolean `cents`, and optional integer `seven_deuce_bonus` (0–1,000,000). During play the request replaces the queued settings. Omitting the bonus retains the queued bonus if present, otherwise the active one. Legacy `auto_deal` is optional and cannot disable dealing. |
 | Client → server | `move_seat` | `seat` is an integer 0–8; move to an empty seat between hands. |
@@ -72,8 +73,10 @@ command or losing eligible players cancels the timer. Eligibility is rechecked
 under the game lock before dealing. Server shutdown cancels the task, and
 persistence failure prevents further deals.
 
+From the flop onward, `hand_strengths` contains the viewer’s live or fully shown hand label for each board in run order. `shown_hand_strengths` maps player IDs to the same labels only for complete hands already public in `runout_vote.hands` or `result.hands`. A one-card reveal has no public label. Both fields reset on a new deal.
+
 Snapshots include nullable `runout_vote` with the hand ID, eligible player IDs,
-recorded votes, and a UTC deadline. A separate cancellable task in
+recorded votes, a UTC deadline, and the tabled contenders’ hole cards in `hands`. A separate cancellable task in
 [GameServer](../../backend/main.py) resolves unanswered offers to one run under the
 game lock, then checkpoints and broadcasts the result. Ordinary broadcasts do not
 reset this deadline. Resolution, shutdown and storage failure cancel the task;
@@ -84,7 +87,7 @@ Completed `result.runouts` contains the board, per-run payouts and pot layers fo
 each run, while `result.payouts` remains the total (including refunds).
 An awarded `result.seven_deuce_bonus` contains the `winner` ID, actual `payments`
 by opponent ID, and `total`. It is null for ordinary results and absent in older
-checkpoints. Bonus awards reveal the winning cards in `result.hands`.
+checkpoints. `result.hands` maps player IDs to public cards in deal order. It includes automatically tabled hands and any cards the owner reveals afterward. A single-card reveal sends only that card. Optional `result.shown_indices` records the positions voluntarily exposed by each player so the browser can show the other slot face down. The browser identifies winners from contested per-run pots or the uncontested pot after a fold.
 
 After accepting a chat message, the server includes `chat: {player_id, text}`
 beside `state` in that broadcast, using the authenticated sender’s ID and trimmed

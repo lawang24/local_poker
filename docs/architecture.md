@@ -52,7 +52,7 @@ configuration, outside the architecture guide.
 ## How a turn reaches everyone
 
 When all-in betting closes before the river, remaining contenders choose one or
-two runouts. Two runs need unanimous consent; one vote for once, a disconnect or
+two runouts with their hands face up. At an ordinary river showdown the server reveals hands in order and automatically mucks beaten hands. After settlement, any dealt player can choose to show either or both of their hidden cards before the next deal. Two runs need unanimous consent; one vote for once, a disconnect or
 a timeout resolves to one. The engine splits each pot across agreed runouts.
 
 A player joins or reconnects to a seat. When they act, the connection layer passes
