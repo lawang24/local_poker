@@ -1,14 +1,16 @@
 import { useRef, useState, type RefObject } from "react";
 import { Feedback } from "./Feedback";
 
-export function TableToolbar({ name, status, settingsOpen, settings, leave, chatButton, openChat }: {
+export function TableToolbar({ name, status, blinds, settingsOpen, settings, leave, chatButton, openChat }: {
   chatButton: RefObject<HTMLButtonElement | null>; openChat: () => void;
-  name: string; status: string; settingsOpen: boolean; settings: () => void; leave: () => void;
+  name: string; status: string; blinds: string; settingsOpen: boolean; settings: () => void; leave: () => void;
 }) {
   const menu = useRef<HTMLDialogElement>(null);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
   return <header className="table-toolbar">
+    {!settingsOpen && <><strong className="table-wordmark">larrypokernow</strong>
+      <span className="table-stakes" aria-label={`No-limit Hold’em, blinds ${blinds}`}>NLH ~ {blinds}</span></>}
     <button className="toolbar-icon" aria-label="Options" onClick={() => menu.current?.showModal()}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18M3 12h18M3 19h18" /></svg>
       <span>Options</span>

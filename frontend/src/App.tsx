@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
+import "./DesktopTable.css";
+import { formatAmount } from "./amounts";
 import type { State } from "./types";
 import { ActionControls, type Action } from "./ActionControls";
 import { PokerTable } from "./PokerTable";
@@ -157,7 +159,8 @@ export default function App() {
 
   return (
     <main className={`app ${joined && state && !settingsOpen ? "app-table" : ""}`}>
-      {joined && state ? <TableToolbar name={me?.name || name} status={status} settingsOpen={settingsOpen} chatButton={chatButton} openChat={() => chatDialog.current?.showModal()}
+      {joined && state ? <TableToolbar name={me?.name || name} status={status}
+        blinds={`${formatAmount(state.small_blind, state.cents)} / ${formatAmount(state.big_blind, state.cents)}`} settingsOpen={settingsOpen} chatButton={chatButton} openChat={() => chatDialog.current?.showModal()}
         settings={() => setSettingsOpen(!settingsOpen)} leave={() => {
           setSettingsOpen(false); setJoined(false); setState(null); setStatus("Offline");
           setPending(false); setError(""); sessionStorage.removeItem(`${sessionKey}:token`);

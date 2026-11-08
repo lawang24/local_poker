@@ -23,21 +23,25 @@ portrait layouts use two side rails close to the screen edges, with a gap for th
 The game shell in [App.css](../../frontend/src/App.css) uses the small viewport height to keep seats fixed as browser chrome changes.
 On portrait screens, the table fills the viewport and the toolbar, chat toggle, and
 betting controls overlay reserved corner/bottom areas. Table geometry stays constant
-between hands and turns. Desktop keeps an oval and a separate chat column; short
-landscape screens also use oval seating with a fixed bottom control lane. Nameplates have two fixed lines for name
+between hands and turns. At desktop widths (1024px and up), [DesktopTable.css](../../frontend/src/DesktopTable.css)
+fits a centered 16:9 frame to the available width and height. Nine seats surround the
+full-width stage, with the shared board dealt left to right into five fixed positions.
+Recent activity and chat sit below the table on the left, with betting controls on
+the right. Shorter landscape phones also use oval seating with a bottom control lane. Nameplates have two fixed lines for name
 and balance, with transient status or payout alongside the balance. Dealer markers
 stay within the screen. Empty seats use numbered outlined slots.
 The bottom seat’s committed amount is anchored directly above its cards. [TableChat.tsx](../../frontend/src/TableChat.tsx)
-keeps the activity log and message draft in a desktop sidebar or, below 1024px,
-a dialog opened from the top of the table. Sending from the dialog returns focus
-to the chat button; closing without sending preserves the draft. A live chat
+shows the last three activity entries in the desktop dock. Table log opens the full
+history, and New message opens the same dialog with the composer focused. Below
+1024px, Chat & log opens it from the toolbar. Sending closes the dialog and returns
+focus to the opener. Closing without sending preserves the draft. A live chat
 appears at its sender’s seat for six seconds; another message from the same player
 replaces it. Long messages are abbreviated in the bubble and remain complete in the log.
 [TableToolbar.tsx](../../frontend/src/TableToolbar.tsx) owns a compact Options button,
 connection indicator, and Feedback in the top-right corner. Options opens a native
 modal containing Settings, Invite, Leave, and expandable table instructions. The
-modal supports Escape and native focus management. Branding and instructional footer
-text are omitted from the playing surface; hand/street/blind metadata sits on the felt.
+modal supports Escape and native focus management. The desktop frame places the larrypokernow name above Options and the game type and
+blinds in the opposite corner. Hand and street information stays with the board.
 [Cards.tsx](../../frontend/src/Cards.tsx) embeds the 52 [clean card faces](../../frontend/src/assets/clean-cards/)
 as data URLs in the JavaScript bundle, so dealing does not fetch separate card files.
 Each face uses Abril Fatface rank outlines and one offset vector suit on white;

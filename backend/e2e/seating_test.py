@@ -88,6 +88,16 @@ def run():
                     assert box and box["x"] >= 0 and box["y"] >= 0
                     assert box["x"] + box["width"] <= width
                     assert box["y"] + box["height"] <= height
+                if width >= 1024:
+                    frame = a.locator(".app-table").bounding_box()
+                    stage = a.locator(".table-stage").bounding_box()
+                    felt = a.locator(".felt").bounding_box()
+                    chat = a.locator(".chat-strip").bounding_box()
+                    assert abs(frame["width"] / frame["height"] - 16 / 9) < .01
+                    assert abs(stage["width"] - frame["width"]) < 1
+                    assert abs(felt["x"] + felt["width"] / 2 - width / 2) < 1
+                    assert chat["y"] >= stage["y"] + stage["height"]
+                    assert chat["x"] + chat["width"] < width / 2
                 a.get_by_role("button", name="Seat 1", exact=True).click()
                 expect(a.get_by_role("button", name="Seat 9", exact=True)).to_be_enabled()
                 print(f"PASS: seat move, reload, dialog, cancel, bounds at {width}x{height}", flush=True)

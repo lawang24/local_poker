@@ -99,9 +99,9 @@ and an explicitly configured development WebSocket URL. Compare reference and
 local screenshots at matching CSS viewport dimensions; check sparse and full
 tables, showdown card spacing, controls, chat, and reconnects. Browser viewport
 overrides may be affected by zoom, so verify `innerWidth` and `innerHeight`.
-The PokerNow public tutorial supplies visual references but does not expose all
-live-game controls or mobile keyboard behavior; those require a live reference
-and device validation before claiming exact parity.
+For desktop layout comparisons, open a public PokerNow table as a spectator.
+Check the game frame, seat and card positions, and lower control lane against the
+live table at the same viewport size. Mobile keyboard behavior requires physical-device validation.
 
 The browser E2E runners extend the deal timer for deterministic seating and
 recovery scenarios and use the legacy start command at controlled boundaries.

@@ -277,6 +277,7 @@ def run(feedback_only=False):
             wait(a, "window.__e2e.state.players.length === 2")
             expect(b.get_by_role("button", name="Deal first hand")).to_have_count(0)
             check("Separate browser identities, shared table, and no manual-deal UI")
+            a.get_by_role("button", name="New message").click()
             a.get_by_label("Chat message").fill("E2E persistent chat")
             a.get_by_role("button", name="Send", exact=True).click()
             expect(b.get_by_role("log")).to_contain_text("E2E persistent chat")

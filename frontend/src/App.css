@@ -593,7 +593,7 @@ button.nameplate:hover, button.nameplate:focus-visible { border-color: #ddd; }
   .app-table .table-stage { max-width: 600px; }
   .app-table .table-stage .felt { inset: 9% 10% 17%; border-radius: 58px; border-width: 8px; }
   .app-table .table-seat { width: min(108px, 28cqw); }
-  .app-table .table-seat[data-seat="1"] { top: calc(100% - 112px); }
+  .app-table .table-seat[data-seat="1"] { top: calc(100% - 132px); }
   .app-table .seat-body { flex-direction: column; align-items: stretch; }
   .app-table .seat-cards { --hole-card-width: min(40px, 8cqh, 10cqw); width: calc(2 * var(--hole-card-width) - 6px); height: calc(var(--hole-card-width) * 1.4); }
   .app-table .card-backs { height: auto; }

@@ -4,25 +4,29 @@ import { formatAmount, inputAmount, parseAmount } from "./amounts";
 import { Cards } from "./Cards";
 import type { Player, State } from "./types";
 
-// Portrait seats use two side rails, with seat 1 below the board.
-function portraitPosition(index: number, count: number): [number, number] {
-  if (index === 0) return [50, 86];
-  if (count === 2) return [50, 10];
-  const leftCount = Math.floor((count - 1) / 2);
-  const rightCount = count - 1 - leftCount;
-  // Leave room for stacked cards and nameplates on short portrait tables.
-  const rails: Record<number, number[]> = { 1: [24], 2: [18, 76], 3: [14, 32, 78], 4: [17, 33, 58, 74] };
-  if (index <= leftCount) return [14, [...rails[leftCount]].reverse()[index - 1]];
-  return [86, rails[rightCount][index - leftCount - 1]];
+// Percentage anchors run clockwise from seat one. All viewers share the
+// same seat order on the desktop oval and the two portrait rails.
+const seats = [
+  { x: 50,   y: 89,   betX: 50,   betY: 78,   mobileX: 50, mobileY: 86 },
+  { x: 17,   y: 72.8, betX: 28.5, betY: 68,   mobileX: 14, mobileY: 74 },
+  { x: 11.5, y: 46.8, betX: 24,   betY: 46.8, mobileX: 14, mobileY: 58 },
+  { x: 17,   y: 20.8, betX: 29.5, betY: 28.5, mobileX: 14, mobileY: 33 },
+  { x: 38,   y: 8.8,  betX: 40,   betY: 23,   mobileX: 14, mobileY: 17 },
+  { x: 62,   y: 8.8,  betX: 58,   betY: 23,   mobileX: 86, mobileY: 17 },
+  { x: 83,   y: 20.8, betX: 70.5, betY: 28.5, mobileX: 86, mobileY: 33 },
+  { x: 89.5, y: 46.8, betX: 76.5, betY: 46.8, mobileX: 86, mobileY: 58 },
+  { x: 84,   y: 72.8, betX: 71.5, betY: 68,   mobileX: 86, mobileY: 74 },
+];
+
+function seatPosition(index: number): CSSProperties {
+  const { x, y, mobileX, mobileY } = seats[index];
+  return { "--seat-x": `${x}%`, "--seat-y": `${y}%`,
+    "--mobile-x": `${mobileX}%`, "--mobile-y": `${mobileY}%` } as CSSProperties;
 }
 
-function Seat({ player, state, index, count, select, speech }: {
-  player: Player; state: State; index: number; count: number; select: () => void; speech?: string;
+function Seat({ player, state, index, select, speech }: {
+  player: Player; state: State; index: number; select: () => void; speech?: string;
 }) {
-  const angle = (index * Math.PI * 2) / Math.max(count, 2);
-  const x = 50 - 40 * Math.sin(angle);
-  const y = 50 + 37 * Math.cos(angle);
-  const [mx, my] = portraitPosition(index, count);
   const mine = player.id === state.you;
   const cards = mine ? state.hand : state.result?.hands[player.id] ?? state.runout_vote?.hands?.[player.id] ?? [];
   const covered = !mine && state.running && player.in_hand && !player.folded;
@@ -44,7 +48,7 @@ function Seat({ player, state, index, count, select, speech }: {
     : !player.in_hand && state.running ? "Next hand" : "";
   return <article
     className={`table-seat ${mine ? "is-you" : ""} ${acting ? "is-acting" : ""} ${player.folded ? "is-folded" : ""} ${!player.connected ? "is-disconnected" : ""} ${winner ? "is-winner" : ""}`}
-    style={{ "--seat-x": `${x}%`, "--seat-y": `${y}%`, "--mobile-x": `${mx}%`, "--mobile-y": `${my}%` } as CSSProperties}
+    style={seatPosition(index)}
     data-seat={index + 1}
     aria-label={`${player.name}${mine ? ", you" : ""}, ${formatAmount(player.stack, state.cents)} chips${winner ? ", winner" : ""}${label ? `, ${label}` : ""}`}
   >
@@ -116,7 +120,7 @@ export function PokerTable({ state, ready, send, speech }: {
   const runouts = state.result?.runouts;
   const bonus = state.result?.seven_deuce_bonus;
   const twice = runouts && runouts.length > 1;
-  return <div className={`table-stage ${twice ? "has-two-runouts" : ""}`} data-player-count={9}>
+  return <div className={`table-stage ${twice ? "has-two-runouts" : ""}`} data-player-count={seats.length}>
     <div className="felt">
       <div className="board-content">
         <div className="pot" aria-label={`Pot ${formatAmount(state.pot, state.cents)} chips`}><span>Pot</span> {formatAmount(state.pot, state.cents)}</div>
@@ -130,20 +134,18 @@ export function PokerTable({ state, ready, send, speech }: {
           <Cards cards={state.board} />
         </div>}
         <p className="table-caption">{bonus ? `2–7 offsuit bonus +${formatAmount(bonus.total, state.result?.cents ?? state.cents)}` : state.runout_vote ? "Choosing runouts" : state.running ? `${players.find(p => p.id === state.actor)?.name || "Table"} to act` : eligible < 2 ? "Waiting for players with chips" : state.street === "complete" ? "Next hand starting soon" : "First hand starting soon"}</p>
-        <p className="board-meta">Hand #{state.hand_number} · {state.street} · {formatAmount(state.small_blind, state.cents)} / {formatAmount(state.big_blind, state.cents)}{state.seven_deuce_bonus > 0 && ` · 2–7: ${formatAmount(state.seven_deuce_bonus, state.cents)}`}</p>
+        <p className="board-meta">Hand #{state.hand_number} · {state.street}<span className="board-blinds"> · {formatAmount(state.small_blind, state.cents)} / {formatAmount(state.big_blind, state.cents)}</span>{state.seven_deuce_bonus > 0 && ` · 2–7: ${formatAmount(state.seven_deuce_bonus, state.cents)}`}</p>
       </div>
       <span className="felt-brand" aria-hidden="true">larrypokernow</span>
     </div>
-    {Array.from({ length: 9 }, (_, index) => {
+    {seats.map((_, index) => {
       const occupant = players.find(p => p.seat === index);
-      const [mx, my] = portraitPosition(index, 9);
-      const angle = index * Math.PI * 2 / 9;
-      return occupant ? <Seat key={index} speech={speech[occupant.id]} player={occupant} state={state} index={index} count={9} select={() => {
+      return occupant ? <Seat key={index} speech={speech[occupant.id]} player={occupant} state={state} index={index} select={() => {
         setSelected(occupant.id);
         setEditorVersion(version => version + 1);
         dialog.current?.showModal();
       }} /> : <button key={index} className="table-seat empty-seat" data-seat={index + 1} aria-label={`Seat ${index + 1}`} type="button"
-        style={{ "--seat-x": `${50 - 40 * Math.sin(angle)}%`, "--seat-y": `${50 + 37 * Math.cos(angle)}%`, "--mobile-x": `${mx}%`, "--mobile-y": `${my}%` } as CSSProperties}
+        style={seatPosition(index)}
         disabled={!ready || state.running} title={state.running ? "Change seats between hands" : `Move to seat ${index + 1}`}
         onClick={() => send({ type: "move_seat", seat: index })}>
         <span className="empty-seat-number" aria-hidden="true">{index + 1}</span><span aria-hidden="true">Sit</span><span className="sr-only">Seat {index + 1}</span>
@@ -170,9 +172,8 @@ export function PokerTable({ state, ready, send, speech }: {
     </dialog>
     {players.map((player) => {
       const index = player.seat;
-      const angle = index * Math.PI * 2 / 9;
-      const [mx, my] = portraitPosition(index, 9);
-      return index !== 0 && state.running && player.committed > 0 ? <div key={player.id} className={`table-bet ${mx < 50 ? "bet-left" : "bet-right"}`} style={{left: `${50 - 22 * Math.sin(angle)}%`, top: `${50 + 22 * Math.cos(angle)}%`, "--desktop-bet-x": `${50 - 22 * Math.sin(angle)}%`, "--desktop-bet-y": `${50 + 22 * Math.cos(angle)}%`, "--mobile-bet-x": `${50 + (mx - 50) * .58}%`, "--mobile-bet-y": `${my + (my < 50 ? 8 : -3)}%`} as CSSProperties} aria-label={`${player.name} bet ${formatAmount(player.committed, state.cents)}`}><i aria-hidden="true" />{formatAmount(player.committed, state.cents)}</div> : null;
+      const { betX, betY, mobileX, mobileY } = seats[index];
+      return index !== 0 && state.running && player.committed > 0 ? <div key={player.id} className={`table-bet ${mobileX < 50 ? "bet-left" : "bet-right"}`} style={{"--desktop-bet-x": `${betX}%`, "--desktop-bet-y": `${betY}%`, "--mobile-bet-y": `${mobileY + (mobileY < 50 ? 8 : -3)}%`} as CSSProperties} aria-label={`${player.name} bet ${formatAmount(player.committed, state.cents)}`}><i aria-hidden="true" />{formatAmount(player.committed, state.cents)}</div> : null;
     })}
   </div>;
 }
