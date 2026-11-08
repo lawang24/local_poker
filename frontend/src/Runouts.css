@@ -1,5 +1,7 @@
 /* All-in decisions remain available over Settings and other table dialogs. */
 .runout-dialog { width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; margin: auto; padding: 24px; border: 1px solid #617256; border-radius: 12px; color: #f2f2ec; background: #202720; box-shadow: 0 20px 80px #0009; }
+.reopen-runout { position: fixed; bottom: max(12px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 12; }
+.runout-dialog > button { margin-top: 12px; }
 .runout-dialog::backdrop { background: #07110bd9; }
 .runout-dialog h2 { font-size: 24px; margin: 0 0 12px; }
 .runout-dialog p { font-size: 14px; line-height: 1.5; }

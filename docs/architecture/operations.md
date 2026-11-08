@@ -85,7 +85,7 @@ separate temporary ports, so it does not write to the deployed game or history.
 The `--feedback-only` mode checks desktop/mobile dialogs, focus restoration, draft
 retention, guest/player persistence, Settings access, and private feedback export.
 Backend subprocesses keep their normal production dependencies. Tests cover
-complete hands, nine-player side pots, browser identity, private cards, crash
+complete hands, edits during runout voting, nine-player side pots, browser identity, private cards, crash
 recovery, transaction conflicts, chat bubbles on a second player’s screen,
 mobile chat focus after sending, bottom-seat position and bet readability
 after a raise, and the private export CLI.
@@ -106,7 +106,10 @@ and device validation before claiming exact parity.
 The browser E2E runners extend the deal timer for deterministic seating and
 recovery scenarios and use the legacy start command at controlled boundaries.
 [Settings tests](../../backend/tests/test_settings.py) verify automatic first and
-subsequent deals, eligibility, cancellation, and persistence-failure guards.
+subsequent deals, queued rebuys that restore eligibility, restart refunds, and
+persistence-failure guards. [Seating tests](../../backend/e2e/seating_test.py)
+exercise both editors at mobile and desktop sizes, including replacement of an
+accepted edit while a hand is running.
 
 ## Keeping this guide current
 

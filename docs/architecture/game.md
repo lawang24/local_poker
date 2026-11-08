@@ -34,8 +34,7 @@ otherwise the table waits until enough funded players connect.
 
 The engine owns blinds, dealer rotation, turn order, minimum raises, all-in
 eligibility, main/side pots, ties, and uncalled-chip returns. Chips are integers;
-players start with 1,000 and blinds are 5/10. Players can set their own stack
-between hands. Players have stable numbered seats; the engine keeps its player
+players start with 1,000 and blinds are 5/10. Players can request a new total for their own stack at any time. Players have stable numbered seats; the engine keeps its player
 list sorted by seat for clockwise dealing and action order. Moves to empty seats
 and removal of other players are allowed only between hands. Removal records a
 cash-out and preserves the next dealer when removing the current dealer.
@@ -43,8 +42,7 @@ Seat numbers are checkpointed; older checkpoints derive them from list order.
 Moves emit `seat_changed` events, and kicks attribute `seat_removed` to the requester.
 Any connected player can change the shared lobby settings:
 positive integer-unit blinds (SB ≤ BB ≤ 1,000,000), cents mode, and the per-opponent
-2–7 offsuit bonus (0–1,000,000 units, default 0). These settings can change only
-between hands. Automatic dealing is always enabled.
+2–7 offsuit bonus (0–1,000,000 units, default 0). Between hands, stack and settings edits take effect immediately. Automatic dealing is always enabled.
 Cents mode denominates each integer unit as 0.01 instead of 1 for everyone;
 switching modes preserves underlying chip balances. The default denomination is whole chips. Settings are checkpointed with backward-compatible defaults and
 emit a `settings_changed` archive event. Chat and game activity share a rolling display log of 100 entries.
@@ -55,6 +53,16 @@ Each event has a schema version, UTC timestamp, sequence, session ID, and hand I
 when applicable. Hand starts capture seat order, starting stacks, all hole cards,
 and the shuffled deck in draw order. Completion captures contributions, payouts,
 ending stacks, and per-player net (ending stack minus opening stack).
+
+During a hand, the engine keeps one requested total per player and one shared
+set of requested settings. A later valid edit replaces the earlier request.
+Saving the active settings clears any queued settings. The live betting limits,
+pot contributions, blinds, denomination and bonus continue to use the active values
+through all runouts. After payouts and bonuses, the engine records the completed
+hand with its settled stacks and net results. It then applies each requested total
+and records the difference from the settled stack as a separate chip movement.
+It clears the queue before checking eligibility, scheduling a deal or posting blinds.
+A queued rebuy can fund a player for the next deal, and a zero total can sit them out.
 
 With a positive bonus, the engine checks the dealt hole cards when the hand ends.
 An offsuit seven and two qualify on a fold win or an outright main-pot win on

@@ -13,9 +13,10 @@ felt, board, bets, and nine fixed numbered seats in server seat order. Empty sea
 are buttons that move the viewer between hands; occupied nameplates open a native
 modal with player details and a kick confirmation for other players. Clicking
 your own nameplate opens a stack editor using the existing `set_stack` command.
-It starts with your current balance, supports whole-chip and cents denominations,
-and permits changes only between hands while connected. Reopening the dialog or
-receiving a changed balance, denomination, or hand status resets the draft. The modal
+The editor opens with your queued total if one exists, otherwise your current balance.
+It uses the denomination selected for the next hand. During play, the dialog
+shows the accepted next-hand total alongside the current seat balance. Between
+hands, saving updates the balance immediately and closes the dialog. The modal
 supports Escape, traps focus, and restores focus when closed. Everyone sees the
 same seat positions, so moving changes both the visible position and dealing order. Desktop seats surround an oval;
 portrait layouts use two side rails close to the screen edges, with a gap for the board.
@@ -80,8 +81,8 @@ and the [game module](game.md) for visibility rules.
 the table or Settings whenever the server offers runouts. Eligible players see
 Run once and Run twice buttons; other players see progress only. The dialog shows
 who has voted and the time remaining, and disables submissions after a vote,
-during a pending request, or without a connection. Escape does not dismiss an
-unresolved choice; the server's deadline ensures it cannot block play indefinitely.
+during a pending request, or without a connection. Return to game or Escape lets players use the editors while votes are pending.
+A countdown button reopens the choice until the server resolves it.
 Closing after resolution restores native focus. The browser does not decide the
 outcome from its countdown. [Runouts.css](../../frontend/src/Runouts.css) owns the
 choice and result styling. [PokerTable.tsx](../../frontend/src/PokerTable.tsx) shows
@@ -109,9 +110,8 @@ Options menu without dropping the connection. Any connected player can save shar
 small/big blinds, cents mode, and the 2–7 bonus per opponent. Zero disables the
 bonus. Dealing is always automatic, including the first hand;
 there is no manual deal button or auto-deal toggle. The server snapshot is authoritative;
-there is no browser-local settings preference. Shared settings are locked during a
-hand. New shared settings reset open
-drafts, and leaving the page discards unsaved changes.
+there is no browser-local settings preference. During play, Settings displays the current hand’s values and any accepted
+replacement for the next hand. New shared settings reset open drafts, and leaving the page discards unsaved changes.
 
 [amounts.ts](../../frontend/src/amounts.ts) formats amounts and converts numeric
 inputs to integer wire units. With cents enabled, 100 wire units equal 1.00;

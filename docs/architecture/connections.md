@@ -20,7 +20,7 @@ The implementation lives in [main.py](../../backend/main.py).
    next one.
 4. The browser sends commands such as `fold`, `check_call`, or `raise`. A raise's
    `amount` is the total commitment for the current betting street. `start`,
-   `set_stack`, and `chat` cover dealing, between-hand stack changes, and messages.
+   `set_stack`, and `chat` cover dealing, stack changes, and messages.
 5. FastAPI handles game commands under one `asyncio.Lock`. The engine checks the
    action, changes the table, and advances play as needed. Invalid requests
    receive an `error` message; frontend button restrictions are only a convenience,
@@ -42,8 +42,8 @@ All messages are JSON text over `/ws`. Clients join before sending game commands
 | Client → server | `fold`, `check_call` | Act on the current turn. |
 | Client → server | `raise` | `amount` is the total commitment for this street. |
 | Client → server | `runout` | `count` is integer 1 or 2; `hand_id` must match the pending offer. Only connected contenders may vote, once per hand. |
-| Client → server | `set_stack` | `amount` sets the player’s stack between hands. |
-| Client → server | `settings` | Any joined player sets integer `small_blind`, `big_blind`, boolean `cents`, and optional integer `seven_deuce_bonus` (0–1,000,000). Omitting the bonus retains the current value. Legacy `auto_deal` is optional and cannot disable dealing. |
+| Client → server | `set_stack` | `amount` requests the player’s total balance. During a hand it replaces their queued total. |
+| Client → server | `settings` | Any joined player sets integer `small_blind`, `big_blind`, boolean `cents`, and optional integer `seven_deuce_bonus` (0–1,000,000). During play the request replaces the queued settings. Omitting the bonus retains the queued bonus if present, otherwise the active one. Legacy `auto_deal` is optional and cannot disable dealing. |
 | Client → server | `move_seat` | `seat` is an integer 0–8; move to an empty seat between hands. |
 | Client → server | `kick` | `player_id` identifies another player to remove between hands. |
 | Client → server | `chat` | `text` contains 1–300 characters after trimming. |
@@ -58,6 +58,10 @@ cannot send further commands or disconnect a replacement in its cleanup.
 
 Snapshots include shared `small_blind`, `big_blind`, `cents`, `seven_deuce_bonus`, and a legacy
 `auto_deal` field that is always true.
+The nullable `queued_stack` is visible only to its owner. All players receive
+`queued_settings` with the four proposed settings, or null. Rejoining a retained
+seat restores these values from the server. Both queues clear at settlement.
+New completed results include `cents` so payout displays retain the hand’s denomination.
 Settings requests validate all fields before mutation, and use the same lock,
 checkpoint, and broadcast path as game actions.
 

@@ -41,6 +41,8 @@ def snapshot(table):
             "seven_deuce_bonus": table.seven_deuce_bonus,
             "auto_deal": table.auto_deal,
             "cents": table.cents,
+            "queued_settings": table.queued_settings,
+            "queued_stacks": table.queued_stacks,
         },
         separators=(",", ":"),
         ensure_ascii=False,
@@ -68,6 +70,8 @@ def restore(payload):
     table.auto_deal = True  # Automatic dealing also applies to older checkpoints.
     table.cents = data.get("cents", False)
     table.seven_deuce_bonus = data.get("seven_deuce_bonus", 0)
+    table.queued_settings = data.get("queued_settings")
+    table.queued_stacks = data.get("queued_stacks", {})
     table.session_id = data.get("session_id")
     table.hand_id = data.get("hand_id")
     table.hand_start = data.get("hand_start")
@@ -115,6 +119,7 @@ def restore(payload):
         table.log(
             "Server restarted. Unfinished hand cancelled; committed chips returned."
         )
+        table.apply_queued_edits()
     table.end_session("server_restart")
     return table
 

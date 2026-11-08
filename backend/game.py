@@ -9,7 +9,7 @@ from deck_of_cards import DeckOfCards
 from phevaluator.evaluator import evaluate_cards
 
 
-_UNCHANGED = object()
+UNCHANGED = object()
 
 
 class InvalidAction(ValueError):
@@ -54,6 +54,8 @@ class Table:
         self.seven_deuce_bonus = 0
         self.auto_deal = True
         self.cents = False
+        self.queued_stacks = {}
+        self.queued_settings = None
         self.pending = set()
         self.result = None
         self.runout_vote = None
@@ -565,6 +567,7 @@ class Table:
         bonus = self.settle_seven_deuce(live, runouts)
         revealed = live if len(live) > 1 or bonus else []
         self.result = {
+            "cents": self.cents,
             "payouts": payouts,
             "pots": pots,
             "hands": {p.id: p.hand for p in revealed},
@@ -597,6 +600,7 @@ class Table:
         self.pending = set()
         self.street = "complete"
         self.runout_vote = None
+        self.apply_queued_edits()
 
     def disconnect(self, player_id):
         p = self.player(player_id)
@@ -628,11 +632,14 @@ class Table:
         if not any(p.connected for p in self.players):
             self.end_session("table_empty")
 
-    def set_settings(self, player_id, small_blind, big_blind, auto_deal, cents, seven_deuce_bonus=_UNCHANGED):
+    def set_settings(self, player_id, small_blind, big_blind, auto_deal, cents, seven_deuce_bonus=UNCHANGED):
         if not self.player(player_id).connected:
             raise InvalidAction("Join the table before changing settings.")
         sb, bb = chips(small_blind), chips(big_blind)
-        bonus = self.seven_deuce_bonus if seven_deuce_bonus is _UNCHANGED else chips(seven_deuce_bonus)
+        if seven_deuce_bonus is UNCHANGED:
+            bonus = (self.queued_settings or {}).get("seven_deuce_bonus", self.seven_deuce_bonus)
+        else:
+            bonus = chips(seven_deuce_bonus)
         if not 0 < sb <= bb:
             raise InvalidAction("Blinds must be positive, with SB no greater than BB.")
         if type(cents) is not bool:
@@ -640,22 +647,32 @@ class Table:
         # Accept the optional legacy field, but it no longer controls dealing.
         if auto_deal is not None and type(auto_deal) is not bool:
             raise InvalidAction("Auto-deal must be true or false.")
-        if self.running and (sb, bb, cents, bonus) != (
-            self.small_blind, self.big_blind, self.cents, self.seven_deuce_bonus
-        ):
-            raise InvalidAction("Change table settings between hands.")
-        self.small_blind, self.big_blind = sb, bb
+        values = dict(small_blind=sb, big_blind=bb, cents=cents, seven_deuce_bonus=bonus)
+        if self.running:
+            changed = any(getattr(self, key) != value for key, value in values.items())
+            self.queued_settings = dict(player_id=player_id, **values) if changed else None
+            self.record("settings_requested", player_id=player_id, **values)
+        else:
+            self.apply_settings(player_id, **values)
+
+    def apply_settings(self, player_id, small_blind, big_blind, cents, seven_deuce_bonus):
+        self.small_blind, self.big_blind = small_blind, big_blind
         self.cents = cents
-        self.seven_deuce_bonus = bonus
+        self.seven_deuce_bonus = seven_deuce_bonus
         self.record("settings_changed", player_id=player_id,
-                    small_blind=sb, big_blind=bb, auto_deal=True, cents=cents,
-                    seven_deuce_bonus=bonus)
+                    small_blind=small_blind, big_blind=big_blind, auto_deal=True,
+                    cents=cents, seven_deuce_bonus=seven_deuce_bonus)
 
     def set_stack(self, player_id, amount):
-        if self.running:
-            raise InvalidAction("Stacks can only be changed between hands.")
         amount = chips(amount)
         p = self.player(player_id)
+        if self.running:
+            self.queued_stacks[player_id] = amount
+            self.record("stack_requested", player_id=player_id, amount=amount)
+        else:
+            self.apply_stack(p, amount)
+
+    def apply_stack(self, p, amount):
         delta = amount - p.stack
         p.stack = amount
         if delta:
@@ -666,6 +683,15 @@ class Table:
                 stack=amount,
                 reason="stack_adjustment",
             )
+
+    def apply_queued_edits(self):
+        # Called after the hand result (or restart refund) has been recorded.
+        if self.queued_settings:
+            self.apply_settings(**self.queued_settings)
+            self.queued_settings = None
+        for player_id, amount in self.queued_stacks.items():
+            self.apply_stack(self.player(player_id), amount)
+        self.queued_stacks.clear()
 
     def state(self, viewer):
         p = self.player(viewer)
@@ -692,6 +718,9 @@ class Table:
                 for q in self.players
             ],
             "you": viewer,
+            "queued_stack": self.queued_stacks.get(viewer),
+            "queued_settings": ({key: value for key, value in self.queued_settings.items()
+                                 if key != "player_id"} if self.queued_settings else None),
             "dealer": self.dealer,
             "actor": self.actor,
             "street": self.street,

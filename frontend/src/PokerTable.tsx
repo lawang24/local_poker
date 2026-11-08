@@ -46,7 +46,7 @@ function Seat({ player, state, index, count, select, speech }: {
       <button type="button" className="nameplate" onClick={select} aria-label={`Player options for ${player.name}`}>
         <strong title={player.name}>{player.name}</strong>
         <span className="seat-balance">{formatAmount(player.stack, state.cents)}</span>
-        {payout > 0 && <span className="seat-payout">+{formatAmount(payout, state.cents)}</span>}
+        {payout > 0 && <span className="seat-payout">+{formatAmount(payout, state.result?.cents ?? state.cents)}</span>}
         {label && !payout && <span className="player-status">{label}</span>}
       </button>
       {player.id === state.dealer && <span className="dealer-marker" title="Dealer" aria-label="Dealer">D</span>}
@@ -57,26 +57,28 @@ function Seat({ player, state, index, count, select, speech }: {
 function PlayerStackEditor({ player, state, ready, send, close }: {
   player: Player; state: State; ready: boolean; send: (action: Action) => void; close: () => void;
 }) {
-  const [stack, setStack] = useState(inputAmount(player.stack, state.cents));
-  const amount = parseAmount(stack, state.cents);
-  const editable = ready && !state.running;
+  const cents = state.queued_settings?.cents ?? state.cents;
+  const [draft, setDraft] = useState<string | null>(null);
+  const stack = draft ?? inputAmount(state.queued_stack ?? player.stack, cents);
+  const amount = parseAmount(stack, cents);
   const valid = Number.isInteger(amount) && amount >= 0 && amount <= 1_000_000;
-  const unit = state.cents ? 100 : 1;
+  const unit = cents ? 100 : 1;
   return <form onSubmit={event => {
     event.preventDefault();
-    if (!editable || !valid) return;
+    if (!ready || !valid) return;
     send({ type: "set_stack", amount });
-    close();
+    if (!state.running) close();
   }}>
     <label>Your stack
       <input type="number" min="0" max={1_000_000 / unit} step={1 / unit}
-        required value={stack} disabled={!editable}
-        onChange={event => setStack(event.target.value)} aria-describedby="player-stack-help" />
+        required value={stack} disabled={!ready}
+        onChange={event => setDraft(event.target.value)} aria-describedby="player-stack-help" />
     </label>
     <p id="player-stack-help" className="hint">{state.running
-      ? "Finish the current hand before changing your stack."
+      ? `Set your total for the next hand in ${cents ? "cents" : "whole chips"}. It replaces your balance after payouts.`
       : `Set your total stack from 0 to ${formatAmount(1_000_000, state.cents)} chips.`}</p>
-    <button className="primary" disabled={!editable || !valid}>Set stack</button>
+    {state.queued_stack != null && <p className="queued-stack" role="status">Queued for next hand · {formatAmount(state.queued_stack, cents)} chips</p>}
+    <button className="primary" disabled={!ready || !valid || amount === state.queued_stack}>{state.running ? "Queue stack" : "Set stack"}</button>
   </form>;
 }
 
@@ -102,12 +104,12 @@ export function PokerTable({ state, ready, send, speech }: {
           {runouts.map((runout, index) => <section key={index} aria-label={`Run ${index + 1}`}>
             <h3>Run {index + 1}</h3>
             <div className="community-cards"><Cards cards={runout.board} /></div>
-            <p className="runout-winners">{Object.entries(runout.payouts).filter(([, amount]) => amount > 0).map(([id, amount]) => `${players.find(p => p.id === id)?.name || "Player"}: +${formatAmount(amount, state.cents)}`).join(" · ")}</p>
+            <p className="runout-winners">{Object.entries(runout.payouts).filter(([, amount]) => amount > 0).map(([id, amount]) => `${players.find(p => p.id === id)?.name || "Player"}: +${formatAmount(amount, state.result?.cents ?? state.cents)}`).join(" · ")}</p>
           </section>)}
         </div> : <div className="community-cards">
           <Cards cards={state.board} />
         </div>}
-        <p className="table-caption">{bonus ? `2–7 offsuit bonus +${formatAmount(bonus.total, state.cents)}` : state.runout_vote ? "Choosing runouts" : state.running ? `${players.find(p => p.id === state.actor)?.name || "Table"} to act` : eligible < 2 ? "Waiting for players with chips" : state.street === "complete" ? "Next hand starting soon" : "First hand starting soon"}</p>
+        <p className="table-caption">{bonus ? `2–7 offsuit bonus +${formatAmount(bonus.total, state.result?.cents ?? state.cents)}` : state.runout_vote ? "Choosing runouts" : state.running ? `${players.find(p => p.id === state.actor)?.name || "Table"} to act` : eligible < 2 ? "Waiting for players with chips" : state.street === "complete" ? "Next hand starting soon" : "First hand starting soon"}</p>
         <p className="board-meta">Hand #{state.hand_number} · {state.street} · {formatAmount(state.small_blind, state.cents)} / {formatAmount(state.big_blind, state.cents)}{state.seven_deuce_bonus > 0 && ` · 2–7: ${formatAmount(state.seven_deuce_bonus, state.cents)}`}</p>
       </div>
       <span className="felt-brand" aria-hidden="true">larrypokernow</span>
@@ -132,14 +134,14 @@ export function PokerTable({ state, ready, send, speech }: {
       {player && <p>Seat {player.seat + 1} · {formatAmount(player.stack, state.cents)} chips</p>}
       {player?.id === state.you
         ? <>
-          <PlayerStackEditor key={`${editorVersion}:${player.stack}:${state.cents}:${state.running}`}
+          <PlayerStackEditor key={`${editorVersion}:${state.queued_stack}:${state.queued_settings?.cents ?? state.cents}`}
             player={player} state={state} ready={ready} send={send} close={() => dialog.current?.close()} />
-          <p className="hint">Click an empty seat to move between hands.</p>
+          {!state.running && <p className="hint">Click an empty seat to move between hands.</p>}
         </>
         : player && <p>Remove this player from the table? Their remaining chips will be cashed out. They can join again manually.</p>}
       {state.running && <p className="hint">Finish the current hand before moving seats or removing players.</p>}
       <div className="feedback-actions">
-        <button autoFocus onClick={() => dialog.current?.close()}>Cancel</button>
+        <button autoFocus onClick={() => dialog.current?.close()}>{player?.id === state.you && state.queued_stack != null ? "Done" : "Cancel"}</button>
         {player && player.id !== state.you && <button className="danger" disabled={!ready || state.running} onClick={() => {
           send({ type: "kick", player_id: player.id });
           dialog.current?.close();

@@ -153,6 +153,7 @@ export default function App() {
   };
   const me = state?.players.find((p) => p.id === state.you);
   const ready = status === "Connected" && !pending;
+  const settings = state?.queued_settings ?? state;
 
   return (
     <main className={`app ${joined && state && !settingsOpen ? "app-table" : ""}`}>
@@ -242,14 +243,14 @@ export default function App() {
             <button className="primary">Join table</button>
           </form>
           <p className="hint">
-            Two to nine players. Stacks can be adjusted between hands.
+            Two to nine players. Click your nameplate to adjust your stack.
           </p>
         </section>
       ) : !state ? (
         status === "Unable to join" || status === "Seat opened elsewhere" ? null :
           <ConnectionProgress loadingTable={status === "Loading table"} />
       ) : settingsOpen ? (
-        <Settings key={`${state.small_blind}:${state.big_blind}:${state.seven_deuce_bonus}:${state.cents}:${state.running}`} state={state} ready={ready} send={send} back={() => setSettingsOpen(false)} />
+        <Settings key={`${settings?.small_blind}:${settings?.big_blind}:${settings?.seven_deuce_bonus}:${settings?.cents}`} state={state} ready={ready} send={send} back={() => setSettingsOpen(false)} />
       ) : (
         <>
           <div className="game-layout">

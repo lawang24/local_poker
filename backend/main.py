@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from game import Table, InvalidAction
+from game import Table, InvalidAction, UNCHANGED
 from storage import DynamoStore, StorageError, snapshot
 from fastapi.responses import JSONResponse
 from feedback import feedback_connection
@@ -249,7 +249,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         server.table.set_settings(
                             player.id, data.get("small_blind"), data.get("big_blind"),
                             data.get("auto_deal"), data.get("cents"),
-                            data.get("seven_deuce_bonus", server.table.seven_deuce_bonus),
+                            data.get("seven_deuce_bonus", UNCHANGED),
                         )
                     elif kind == "move_seat":
                         server.table.move_seat(player.id, data.get("seat"))

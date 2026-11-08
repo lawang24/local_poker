@@ -44,8 +44,8 @@ at `http://127.0.0.1:8001/health`; Vite's default health proxy still targets 800
 
 ## Gameplay
 
-- Start with 1,000 play chips; blinds are 5/10. Click your nameplate to change your own stack between hands, including rebuying after losing your chips.
-- **2–7 offsuit game.** In Options → Settings, set **Bonus per opponent** between hands. Zero turns the game off. A player holding an offsuit seven and two earns the bonus when everyone else folds or when they win the main pot outright on every runout. Their cards are shown. Each other player dealt into that hand pays the configured amount once, up to their stack after pot awards.
+- Start with 1,000 play chips; blinds are 5/10. Click your nameplate to set your own total stack, including a rebuy. During play, your total and any shared settings edits queue for the next hand. Payouts settle first. Between hands, edits apply immediately.
+- **2–7 offsuit game.** In Options → Settings, set **Bonus per opponent**. Zero turns the game off. A player holding an offsuit seven and two earns the bonus when everyone else folds or when they win the main pot outright on every runout. Their cards are shown. Each other player dealt into that hand pays the configured amount once, up to their stack after pot awards.
 - The dealer rotates between eligible players. Heads-up, the dealer posts the small blind and acts first preflop, last postflop.
 - **Raise to** is the total committed on the current betting street. The server checks turns, minimum raises, available chips, and whether short all-ins reopen betting.
 - All-in players skip further actions. When no further betting is possible, the board runs out automatically. Main/side pots split by eligibility and hand rank; odd chips go clockwise starting left of the dealer. Uncalled excess is returned.

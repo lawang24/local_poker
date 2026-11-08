@@ -129,6 +129,24 @@ class RunoutTests(unittest.TestCase):
         self.assertIsNone(t.runout_vote)
         self.assertEqual(t.street, 'complete')
 
+    def test_queued_edits_during_vote_do_not_change_runouts_or_side_pots(self):
+        t = table((50, 100, 200))
+        all_in(t)
+        original = deepcopy(t)
+        a, b, c = t.players
+        t.set_stack(a.id, 750)
+        t.set_stack(c.id, 0)
+        t.set_settings(b.id, 25, 50, None, True, 100)
+        self.assertEqual(t.runout_vote, original.runout_vote)
+        twice(original)
+        twice(t)
+        self.assertEqual(t.result, original.result)
+        self.assertEqual([p.stack for p in t.players], [750, original.player(b.id).stack, 0])
+        completed = next(e for e in t.events if e["type"] == "hand_completed")
+        self.assertEqual(completed["net"], original.events[-1]["net"])
+        self.assertEqual(completed["players"], original.events[-1]["players"])
+        self.assertIsNone(t.state(a.id)["queued_settings"])
+
     def test_covering_player_disconnect_keeps_eligibility(self):
         t = table((100, 200))
         all_in(t)

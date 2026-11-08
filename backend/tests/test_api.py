@@ -65,15 +65,18 @@ class WebSocketTests(unittest.TestCase):
                 a.receive_json()
                 b.receive_json()
                 a.send_json({"type": "set_stack", "amount": 999})
-                self.assertEqual(a.receive_json()["type"], "error")
-                a.receive_json()
-                b.receive_json()
+                queued = a.receive_json()["state"]
+                self.assertEqual(queued["queued_stack"], 999)
+                self.assertEqual(queued["players"], aa["players"])
+                self.assertIsNone(b.receive_json()["state"]["queued_stack"])
                 sockets = {sa["id"]: a, sb["id"]: b}
                 while aa["running"]:
                     sockets[aa["actor"]].send_json({"type": "check_call"})
                     aa, bb = a.receive_json()["state"], b.receive_json()["state"]
                 self.assertEqual(len(aa["board"]), 5)
-                self.assertEqual(sum(p["stack"] for p in aa["players"]), 2000)
+                self.assertEqual(aa["players"][0]["stack"], 999)
+                self.assertIsNone(aa["queued_stack"])
+                self.assertEqual(sum(aa["result"]["payouts"].values()), 20)
                 self.assertEqual(aa["result"], bb["result"])
 
     def test_session_takeover_keeps_seat_and_hand(self):
@@ -85,9 +88,17 @@ class WebSocketTests(unittest.TestCase):
                 old.send_json({"type": "start"})
                 before = old.receive_json()["state"]
                 bob.receive_json()
+                old.send_json({"type": "set_stack", "amount": 400})
+                old.receive_json()
+                bob.receive_json()
+                old.send_json({"type": "settings", "small_blind": 15, "big_blind": 30, "cents": True})
+                old.receive_json()
+                self.assertEqual(bob.receive_json()["state"]["queued_settings"]["big_blind"], 30)
                 with self.client.websocket_connect("/ws") as new:
                     replacement, state = self.join(new, "Alice", session["token"])
                     self.assertEqual(replacement["id"], session["id"])
+                    self.assertEqual(state["queued_stack"], 400)
+                    self.assertEqual(state["queued_settings"]["big_blind"], 30)
                     self.assertEqual(state["hand"], before["hand"])
                     self.assertEqual(state["actor"], before["actor"])
                     self.assertFalse(state["players"][0]["folded"])

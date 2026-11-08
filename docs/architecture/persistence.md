@@ -81,6 +81,11 @@ backend restarts. Retained seats can reconnect with their existing stacks; new
 seats start at 1,000. Identity profiles outlive seats. The browser retains its
 credential across visits, but there is no cross-device account or identity recovery.
 
+The checkpoint retains any queued stack totals and shared settings, including who
+requested the settings. Older checkpoints default to an empty queue. Mid-hand
+requests produce `stack_requested` and `settings_requested` events. Only applying
+a stack target creates a movement, measured against the balance after settlement.
+
 Seat entry, stack adjustments, seat removal, and session closure create distinct
 chip-transfer records. Hand profit includes pot payouts and uncalled returns,
 less contributions, plus any 2–7 bonuses received or paid. Cancelled hands
@@ -97,7 +102,8 @@ backend versions cannot read the checkpoint, so deploy the new backend as a unit
 
 Retained seats restore as disconnected. If a saved hand was unfinished, recovery
 refunds contributions, records `hand_cancelled` with zero net, and clears live
-cards/bets. The previous session closes with recorded cash-outs. Completed payouts
+cards/bets. It then applies the queued edits before closing the previous session
+with recorded cash-outs at the final balances. Completed payouts
 are never refunded or recorded twice. The recovery changes and archive records
 commit together before accepting connections; the next join opens a new session.
 Session end timestamps after a crash indicate when recovery detected closure,

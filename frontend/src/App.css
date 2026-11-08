@@ -375,6 +375,10 @@ header .eyebrow { font-size: 9px; margin-bottom: 2px; color: #a8a8a8; }
 .setting-toggle small { display: block; font-size: 12px; font-weight: 400; color: #aaa; margin-top: 6px; }
 .setting-toggle input { width: 22px; height: 22px; flex-shrink: 0; accent-color: #389c65; }
 .blind-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; }
+.settings-summary { border-left: 2px solid #80976b; padding: 0 12px; margin-top: 16px; }
+.settings-summary p { margin: 6px 0; font-size: 14px; }
+.settings-summary strong { display: block; }
+.queued-stack { color: #cbe7ae; font-size: 14px; }
 .settings-save { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin-top: 28px; }
 .settings-save span { font-size: 12px; color: #aaa; }
 @media (max-width: 600px) {

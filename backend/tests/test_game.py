@@ -210,7 +210,7 @@ class PokerTests(unittest.TestCase):
         with self.assertRaises(InvalidAction):
             t.start(t.players[0].id)
         with self.assertRaises(InvalidAction):
-            t.set_stack(t.players[0].id, 200)
+            t.set_stack(t.players[0].id, -1)
         newcomer = t.join("Player 0")
         self.assertNotEqual(newcomer.name, t.players[0].name)
         self.assertFalse(newcomer.in_hand)

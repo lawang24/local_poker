@@ -9,7 +9,13 @@ export type Player = {
   committed: number;
   all_in: boolean;
 };
-export type State = {
+export type TableSettings = {
+  small_blind: number;
+  big_blind: number;
+  seven_deuce_bonus: number;
+  cents: boolean;
+};
+export type State = TableSettings & {
   players: Player[];
   you: string;
   dealer: string;
@@ -20,10 +26,8 @@ export type State = {
   hand: string[];
   pot: number;
   target: number;
-  small_blind: number;
-  big_blind: number;
-  seven_deuce_bonus: number;
-  cents: boolean;
+  queued_stack: number | null;
+  queued_settings: TableSettings | null;
   min_raise_to: number;
   max_raise_to: number;
   can_raise: boolean;
@@ -37,6 +41,7 @@ export type State = {
     deadline: string;
   };
   result: null | {
+    cents?: boolean;
     payouts: Record<string, number>;
     hands: Record<string, string[]>;
     seven_deuce_bonus?: { winner: string; payments: Record<string, number>; total: number } | null;

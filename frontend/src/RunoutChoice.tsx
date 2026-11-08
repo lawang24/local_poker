@@ -8,6 +8,7 @@ export function RunoutChoice({ state, ready, send }: {
 }) {
   const vote = state.runout_vote!;
   const dialog = useRef<HTMLDialogElement>(null);
+  const [open, setOpen] = useState(true);
   const [now, setNow] = useState(Date.now);
   const involved = vote.eligible.includes(state.you);
   const chosen = vote.votes[state.you];
@@ -15,13 +16,14 @@ export function RunoutChoice({ state, ready, send }: {
   const waiting = vote.eligible.filter(id => vote.votes[id] === undefined);
   useEffect(() => {
     const element = dialog.current;
-    element?.showModal();
+    if (open) element?.showModal();
     const timer = setInterval(() => setNow(Date.now()), 250);
     return () => { clearInterval(timer); element?.close(); };
-  }, []);
+  }, [open]);
   const choose = (count: number) => send({ type: "runout", count, hand_id: vote.hand_id });
+  if (!open) return <button className="reopen-runout" onClick={() => setOpen(true)}>Runout choice · {remaining}s</button>;
   return <dialog ref={dialog} className="runout-dialog" aria-labelledby="runout-title"
-    aria-describedby="runout-description" onCancel={event => event.preventDefault()}>
+    aria-describedby="runout-description" onCancel={() => setOpen(false)}>
     <p className="eyebrow">BETTING COMPLETE</p>
     <h2 id="runout-title">Run it once or twice?</h2>
     <p id="runout-description">Two runs split each pot across two boards. Cards already on the table stay the same. Everyone still in the hand must agree.</p>
@@ -37,6 +39,7 @@ export function RunoutChoice({ state, ready, send }: {
       </li>)}
     </ul>
     <p className="runout-timeout">{remaining > 0 ? `Runs once in ${remaining}s unless everyone chooses twice.` : "Resolving the runout…"}</p>
+    <button type="button" onClick={() => setOpen(false)}>Return to game</button>
     {!ready && <p role="status">Waiting for connection or update…</p>}
   </dialog>;
 }

@@ -29,7 +29,7 @@ export function TableToolbar({ name, status, settingsOpen, settings, leave, chat
         <button onClick={() => { menu.current?.close(); leave(); }}>Leave table</button>
       </nav>
       {copyError && <p role="alert">Copy the table URL from your address bar to invite friends.</p>}
-      <details><summary>How this table works</summary><p>Play chips only. Hands deal automatically when two connected players have chips. Click your name to adjust your stack between hands. Disconnecting folds a live hand unless you’re all-in. Refreshing restores a retained seat.</p></details>
+      <details><summary>How this table works</summary><p>Play chips only. Hands deal automatically when two connected players have chips. Click your name to set your stack. During play, stack and settings edits apply after the hand. Disconnecting folds a live hand unless you’re all-in. Refreshing restores a retained seat.</p></details>
     </dialog>
   </header>;
 }

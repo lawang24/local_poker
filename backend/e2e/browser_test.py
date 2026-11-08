@@ -316,8 +316,8 @@ def run(feedback_only=False):
                 state(b)["pot"] == before["pot"],
             )
             raw(a, {"type": "set_stack", "amount": 9999})
-            wait(a, "window.__e2e.errors.length > 0")
-            check("Mid-hand chip adjustment rejected", player_stack(a) == 995)
+            wait(a, "window.__e2e.state.queued_stack === 9999")
+            check("Queued stack leaves current chips available for betting", player_stack(a) == 995)
             a.set_viewport_size({"width": 390, "height": 844})
             south = a.locator('[data-seat="1"]')
             seat_before_bet = south.bounding_box()
@@ -353,8 +353,9 @@ def run(feedback_only=False):
                 seen == {"flop", "turn", "river"},
             )
             check(
-                "Completed hand conserves chips",
-                sum(p["stack"] for p in state(a)["players"]) == 2000,
+                "Completed hand pays the original pot and applies the requested total",
+                sum(state(a)["result"]["payouts"].values()) == 80
+                and player_stack(a) == 9999 and state(a)["queued_stack"] is None,
             )
             expect(a.locator(".community-cards img")).to_have_count(5)
             check(
@@ -436,9 +437,23 @@ def run(feedback_only=False):
                 if not s["running"]:
                     break
                 if s.get("runout_vote"):
+                    a.set_viewport_size({"width": 390, "height": 844})
+                    a.get_by_role("button", name="Return to game").click()
+                    a.get_by_role("button", name="Options", exact=True).click()
+                    a.get_by_role("button", name="Settings", exact=True).click()
+                    a.get_by_label("Big blind (BB)").fill("25")
+                    a.get_by_role("button", name="Queue settings").click()
+                    expect(a.locator(".settings-summary")).to_contain_text("5 / 25 blinds")
+                    reopen_vote = a.get_by_role("button", name=re.compile("^Runout choice"))
+                    expect(reopen_vote).to_be_in_viewport()
+                    reopen_vote.click()
                     for pid in s["runout_vote"]["eligible"]:
                         by_id[pid].get_by_role("button", name="Run twice", exact=True).click()
                     wait(a, "window.__e2e.state.street === 'complete'")
+                    check("Settings accepted during voting apply after both runouts",
+                          state(a)["big_blind"] == 25 and state(a)["queued_settings"] is None
+                          and len(state(a)["result"]["runouts"]) == 2)
+                    a.get_by_role("button", name="Back to table").click()
                     break
                 p = by_id[s["actor"]]
                 wait(p, "window.__e2e.state.actor === window.__e2e.state.you")
