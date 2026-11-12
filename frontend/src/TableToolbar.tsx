@@ -1,8 +1,8 @@
 import { useRef, useState, type RefObject } from "react";
 import { Feedback } from "./Feedback";
 
-export function TableToolbar({ name, status, blinds, settingsOpen, settings, leave, chatButton, openChat }: {
-  chatButton: RefObject<HTMLButtonElement | null>; openChat: () => void;
+export function TableToolbar({ name, status, blinds, settingsOpen, settings, leave, chatButton, openChat, openLog }: {
+  chatButton: RefObject<HTMLButtonElement | null>; openChat: () => void; openLog: () => void;
   name: string; status: string; blinds: string; settingsOpen: boolean; settings: () => void; leave: () => void;
 }) {
   const menu = useRef<HTMLDialogElement>(null);
@@ -16,8 +16,10 @@ export function TableToolbar({ name, status, blinds, settingsOpen, settings, lea
       <span>Options</span>
     </button>
     <span className={`status ${status === "Connected" ? "online" : ""}`} role="status" title={status}><span className="sr-only">{status}</span></span>
+    {!settingsOpen && <button className="table-chat-toggle" aria-haspopup="dialog"
+      aria-controls="session-log" onClick={openLog}>Log</button>}
     {!settingsOpen && <button ref={chatButton} className="table-chat-toggle" aria-haspopup="dialog"
-      aria-controls="table-chat" onClick={openChat}>Chat &amp; log</button>}
+      aria-controls="table-chat" onClick={openChat}>Chat</button>}
     <Feedback name={name} />
     <dialog ref={menu} className="feedback-modal table-options" aria-labelledby="options-title">
       <div className="feedback-heading"><h2 id="options-title">Table options</h2><button autoFocus aria-label="Close options" onClick={() => menu.current?.close()}>×</button></div>

@@ -191,13 +191,16 @@ class HistoryTests(unittest.TestCase):
 
     def test_all_chat_is_archived_but_live_log_is_bounded(self):
         table = Table()
-        table.join("A")
+        player = table.join("A")
         for i in range(120):
-            table.log(f"chat {i}")
-        self.assertEqual(len(table.history), 100)
+            table.add_chat(player, f"chat {i}")
+            table.log(f"action {i}")
+        self.assertEqual(table.history, [f"action {i}" for i in range(20, 120)])
+        self.assertEqual(table.chat_history, [{"name": "A", "text": f"chat {i}"} for i in range(20, 120)])
         messages = [e for e in table.events if e["type"] == "message"]
-        self.assertEqual(len(messages), 120)
-        self.assertEqual(messages[0]["text"], "chat 0")
+        self.assertEqual(len(messages), 240)
+        self.assertEqual(messages[0]["text"], "A: chat 0")
+        self.assertEqual(messages[0]["player_id"], player.id)
 
     def test_ambiguous_commit_stops_play_and_preserves_one_result(self):
         store = MemoryArchive()

@@ -18,7 +18,11 @@ boto3 calls run off the event loop while game changes remain ordered by one lock
 The existing checkpoint table keeps its string partition key `pk=GAME#GLOBAL`,
 with increasing `version` and a compressed binary JSON `payload`. Schema 2 adds
 session/hand IDs, starting-hand data, and the event sequence to the existing
-players, chips, board, result, blinds, and recent display log. Shared cents and
+players, chips, board, result, blinds, and recent game activity. New checkpoints
+also save the chat transcript. On first recovery from a mixed display log, the
+loader uses the former nickname prefix and dealer announcement format to
+separate entries. Older checkpoints did not record the channel, so ambiguous
+names or messages can be misclassified during that conversion. Shared cents and
 the legacy auto-deal flag are also saved. The saved 2–7 bonus defaults to zero
 for older checkpoints. Cents defaults to false for older
 checkpoints; auto-deal always restores as true, regardless of its saved value.
@@ -137,7 +141,7 @@ AWS access; no public history endpoint exposes live cards. See the
 [README](../../README.md#exporting-history) for commands.
 
 These records support future equity analysis using the information available at
-any street. An equity calculator, player-facing history/report UI, account login,
+any street. An equity calculator, a UI for archived sessions, account login,
 and cross-device identity linking are future work. Export queries paginate, but
 the CLI assembles the selected partition in memory; large analytical workloads
 will need a streaming export or a dedicated analytics pipeline.

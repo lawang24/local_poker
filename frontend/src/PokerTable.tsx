@@ -7,15 +7,15 @@ import type { Player, State } from "./types";
 // Percentage anchors run clockwise from seat one. All viewers share the
 // same seat order on the desktop oval and the two portrait rails.
 const seats = [
-  { x: 50,   y: 89,   betX: 50,   betY: 78,   mobileX: 50, mobileY: 86 },
-  { x: 17,   y: 72.8, betX: 28.5, betY: 68,   mobileX: 14, mobileY: 74 },
-  { x: 11.5, y: 46.8, betX: 24,   betY: 46.8, mobileX: 14, mobileY: 58 },
-  { x: 17,   y: 20.8, betX: 29.5, betY: 28.5, mobileX: 14, mobileY: 33 },
-  { x: 38,   y: 8.8,  betX: 40,   betY: 23,   mobileX: 14, mobileY: 17 },
-  { x: 62,   y: 8.8,  betX: 58,   betY: 23,   mobileX: 86, mobileY: 17 },
-  { x: 83,   y: 20.8, betX: 70.5, betY: 28.5, mobileX: 86, mobileY: 33 },
-  { x: 89.5, y: 46.8, betX: 76.5, betY: 46.8, mobileX: 86, mobileY: 58 },
-  { x: 84,   y: 72.8, betX: 71.5, betY: 68,   mobileX: 86, mobileY: 74 },
+  { x: 50,   y: 89,   betX: 50,   betY: 78,   dealerX: 41, dealerY: 78, mobileX: 50, mobileY: 86 },
+  { x: 17,   y: 72.8, betX: 28.5, betY: 68,   dealerX: 30, dealerY: 75, mobileX: 14, mobileY: 74 },
+  { x: 11.5, y: 46.8, betX: 24,   betY: 46.8, dealerX: 23, dealerY: 56, mobileX: 14, mobileY: 58 },
+  { x: 17,   y: 20.8, betX: 29.5, betY: 28.5, dealerX: 22.5, dealerY: 32.4, mobileX: 14, mobileY: 33 },
+  { x: 38,   y: 8.8,  betX: 40,   betY: 23,   dealerX: 47.1, dealerY: 20.2, mobileX: 14, mobileY: 17 },
+  { x: 62,   y: 8.8,  betX: 58,   betY: 23,   dealerX: 51, dealerY: 20.9, mobileX: 86, mobileY: 17 },
+  { x: 83,   y: 20.8, betX: 70.5, betY: 28.5, dealerX: 75, dealerY: 35.8, mobileX: 86, mobileY: 33 },
+  { x: 89.5, y: 46.8, betX: 76.5, betY: 46.8, dealerX: 78.6, dealerY: 59.6, mobileX: 86, mobileY: 58 },
+  { x: 84,   y: 72.8, betX: 71.5, betY: 68,   dealerX: 70, dealerY: 75, mobileX: 86, mobileY: 74 },
 ];
 
 function seatPosition(index: number): CSSProperties {
@@ -43,9 +43,10 @@ function Seat({ player, state, index, select, speech }: {
   const winner = wonRuns?.length
     ? wonRuns.some(Boolean)
     : result?.pots.some(pot => pot.winners.includes(player.id));
+  const waiting = player.connected && !player.in_hand;
   const label = !player.connected ? "Disconnected" : player.folded ? "Folded"
     : player.all_in && state.running ? "All-in" : acting ? "To act"
-    : !player.in_hand && state.running ? "Next hand" : "";
+    : waiting ? "Waiting" : "";
   return <article
     className={`table-seat ${mine ? "is-you" : ""} ${acting ? "is-acting" : ""} ${player.folded ? "is-folded" : ""} ${!player.connected ? "is-disconnected" : ""} ${winner ? "is-winner" : ""}`}
     style={seatPosition(index)}
@@ -55,6 +56,13 @@ function Seat({ player, state, index, select, speech }: {
     {speech && <div className="seat-speech"><span>{speech}</span></div>}
     {index === 0 && state.running && player.committed > 0 && <div className="table-bet south-bet" aria-label={`${player.name} bet ${formatAmount(player.committed, state.cents)}`}>{formatAmount(player.committed, state.cents)}</div>}
     <div className="seat-body">
+      {waiting && <span className="seat-waiting" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5">
+          <circle cx="12" cy="12" r="9.5" />
+          <path d="M12 6v6H7" />
+        </svg>
+        Waiting
+      </span>}
       <div className="seat-cards">
         {cards.length ? <Cards cards={slots} hole /> : covered ? <div className="card-backs" aria-label="Two hidden cards"><span /><span /></div> : <div className="empty-cards" aria-hidden="true">{player.folded ? "×" : ""}</div>}
       </div>
@@ -62,7 +70,7 @@ function Seat({ player, state, index, select, speech }: {
         <strong title={player.name}>{player.name}</strong>
         <span className="seat-balance">{formatAmount(player.stack, state.cents)}</span>
         {payout > 0 && <span className="seat-payout">+{formatAmount(payout, state.result?.cents ?? state.cents)}</span>}
-        {label && !payout && <span className="player-status">{label}</span>}
+        {label && !waiting && !payout && <span className="player-status">{label}</span>}
       </button>
       {!!strengths?.length && <div className={`hand-strength ${strengths.length > 1 ? "two-runs" : ""}`} aria-live="polite">
         <span className="sr-only">{mine ? "Your" : player.name + "’s"} made hand: </span>
@@ -73,7 +81,6 @@ function Seat({ player, state, index, select, speech }: {
           </div>)}
         </div>
       </div>}
-      {player.id === state.dealer && <span className="dealer-marker" title="Dealer" aria-label="Dealer">D</span>}
     </div>
   </article>;
 }
@@ -116,6 +123,7 @@ export function PokerTable({ state, ready, send, speech }: {
   const player = state.players.find(p => p.id === selected);
   const players = state.players;
 
+  const dealer = players.find(p => p.id === state.dealer);
   const eligible = players.filter(p => p.connected && p.stack > 0).length;
   const runouts = state.result?.runouts;
   const bonus = state.result?.seven_deuce_bonus;
@@ -138,6 +146,13 @@ export function PokerTable({ state, ready, send, speech }: {
       </div>
       <span className="felt-brand" aria-hidden="true">larrypokernow</span>
     </div>
+    {dealer && <span className="dealer-marker" data-seat={dealer.seat + 1}
+      style={{
+        ...seatPosition(dealer.seat),
+        "--dealer-x": `${seats[dealer.seat].dealerX}%`,
+        "--dealer-y": `${seats[dealer.seat].dealerY}%`,
+      } as CSSProperties}
+      role="img" aria-label={`Dealer: ${dealer.name}`} title={`Dealer: ${dealer.name}`}>D</span>}
     {seats.map((_, index) => {
       const occupant = players.find(p => p.seat === index);
       return occupant ? <Seat key={index} speech={speech[occupant.id]} player={occupant} state={state} index={index} select={() => {

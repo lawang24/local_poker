@@ -80,6 +80,7 @@ class Table:
         self.result = None
         self.runout_vote = None
         self.history = []
+        self.chat_history = []
         self.hand_number = 0
         self.deck = DeckOfCards()
         self.session_id = None
@@ -87,6 +88,7 @@ class Table:
         self.hand_start = None
         self.event_sequence = 0
         self.events = []
+        self.ledger = {}
         self.profiles = {}
         self.identities = {}
 
@@ -112,19 +114,53 @@ class Table:
         self.identities[digest] = profile
         self.profiles[digest] = profile
 
+    def record_transfer(self, player, kind, amount, reason):
+        data = {"player_id": player.id, "amount": amount, "reason": reason}
+        if reason == "seat_entry":
+            data["name"] = player.name
+        elif reason == "stack_adjustment":
+            data["stack"] = player.stack
+        self.record(kind, **data)
+
+        at = self.events[-1]["at"]
+        if reason == "seat_entry":
+            self.ledger.setdefault(player.id, []).append({
+                "name": player.name, "start": at, "end": None,
+                "buy_in": 0, "buy_out": 0, "movements": [],
+            })
+        sessions = self.ledger.get(player.id)
+        if not sessions:
+            return  # A queued edit being applied during checkpoint recovery.
+        entry = sessions[-1]
+        incoming = kind == "chips_added"
+        entry["buy_in" if incoming else "buy_out"] += amount
+        entry["movements"].append({"at": at, "amount": amount, "reason": reason, "incoming": incoming})
+        if reason == "seat_removed":
+            entry["end"] = at
+
+    def ledger_view(self):
+        # Account for chips still in the pot until the hand is settled.
+        balances = {p.id: p.stack + (p.contribution if self.running else 0) for p in self.players}
+        rows = []
+        for player_id, sessions in self.ledger.items():
+            stack = balances.get(player_id, 0) if sessions[-1]["end"] is None else 0
+            buy_in = sum(entry["buy_in"] for entry in sessions)
+            buy_out = sum(entry["buy_out"] for entry in sessions)
+            rows.append({
+                "id": player_id, "name": sessions[-1]["name"], "buy_in": buy_in,
+                "buy_out": buy_out, "stack": stack, "net": buy_out + stack - buy_in,
+                "sessions": sessions,
+            })
+        return rows
+
     def enter_session(self, player):
         if self.session_id is None:
+            self.ledger.clear()
             self.session_id = uuid4().hex
             self.record("session_started")
         if player.session_id != self.session_id:
             player.session_id = self.session_id
-            self.record(
-                "chips_added",
-                player_id=player.id,
-                amount=player.stack,
-                reason="seat_entry",
-                name=player.name,
-            )
+            self.record_transfer(player, "chips_added", player.stack, "seat_entry")
 
     def end_session(self, reason):
         if self.session_id is None:
@@ -172,12 +208,7 @@ class Table:
             for p in self.players:
                 if not p.connected:
                     if p.session_id == self.session_id and self.session_id:
-                        self.record(
-                            "chips_removed",
-                            player_id=p.id,
-                            amount=p.stack,
-                            reason="seat_removed",
-                        )
+                        self.record_transfer(p, "chips_removed", p.stack, "seat_removed")
                     self.record("seat_removed", player_id=p.id)
             self.players = [p for p in self.players if p.connected]
         if len(self.players) >= 9:
@@ -234,8 +265,7 @@ class Table:
             index = self.players.index(target)
             self.dealer = self.players[index - 1].id
         if target.session_id == self.session_id and self.session_id:
-            self.record("chips_removed", player_id=target.id,
-                        amount=target.stack, reason="seat_removed")
+            self.record_transfer(target, "chips_removed", target.stack, "seat_removed")
         self.players.remove(target)
         self.record("seat_removed", player_id=target.id, removed_by=player_id)
         self.log(f"{self.player(player_id).name} removed {target.name} from the table.")
@@ -252,9 +282,13 @@ class Table:
             None,
         )
 
-    def log(self, message, player_id=None):
+    def add_chat(self, player, text):
+        self.chat_history = (self.chat_history + [{"name": player.name, "text": text}])[-100:]
+        self.record("message", text=f"{player.name}: {text}", player_id=player.id)
+
+    def log(self, message):
         self.history = (self.history + [message])[-100:]
-        self.record("message", text=message, player_id=player_id)
+        self.record("message", text=message, player_id=None)
 
     def pay(self, p, amount):
         amount = min(amount, p.stack)
@@ -745,13 +779,8 @@ class Table:
         delta = amount - p.stack
         p.stack = amount
         if delta:
-            self.record(
-                "chips_added" if delta > 0 else "chips_removed",
-                player_id=p.id,
-                amount=abs(delta),
-                stack=amount,
-                reason="stack_adjustment",
-            )
+            self.record_transfer(p, "chips_added" if delta > 0 else "chips_removed",
+                                 abs(delta), "stack_adjustment")
 
     def apply_queued_edits(self):
         # Called after the hand result (or restart refund) has been recorded.
@@ -800,6 +829,7 @@ class Table:
                 }
                 for q in self.players
             ],
+            "ledger": self.ledger_view(),
             "you": viewer,
             "queued_stack": self.queued_stacks.get(viewer),
             "queued_settings": ({key: value for key, value in self.queued_settings.items()
@@ -826,5 +856,6 @@ class Table:
             "result": self.result,
             "runout_vote": deepcopy(self.runout_vote),
             "history": self.history,
+            "chat_history": self.chat_history,
             "hand_number": self.hand_number,
         }

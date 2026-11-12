@@ -86,7 +86,7 @@ The `--feedback-only` mode checks desktop/mobile dialogs, focus restoration, dra
 retention, guest/player persistence, Settings access, and private feedback export.
 Backend subprocesses keep their normal production dependencies. Tests cover
 complete hands, edits during runout voting, nine-player side pots, browser identity, private cards, crash
-recovery, transaction conflicts, chat bubbles on a second player’s screen,
+recovery, transaction conflicts, chat bubbles on a second player’s screen, separation of chat from session log entries,
 mobile chat focus after sending, bottom-seat position and bet readability
 after a raise, and the private export CLI.
 Artifacts go to ignored `.artifacts/e2e/`; services stop after the run. The emulator
@@ -99,7 +99,10 @@ and an explicitly configured development WebSocket URL. Compare reference and
 local screenshots at matching CSS viewport dimensions; check sparse and full
 tables, showdown card spacing, controls, chat, and reconnects. Browser viewport
 overrides may be affected by zoom, so verify `innerWidth` and `innerHeight`.
-For desktop layout comparisons, open a public PokerNow table as a spectator.
+All PokerNow comparisons reuse one private reference table across runs and
+viewport sizes. Resume the same players there to reach the state under test
+and use an unseated identity at that table for the spectator view. The
+[project instructions](../../AGENTS.md) describe how to resume the table.
 Check the game frame, seat and card positions, and lower control lane against the
 live table at the same viewport size. Mobile keyboard behavior requires physical-device validation.
 

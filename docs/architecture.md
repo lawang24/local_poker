@@ -9,7 +9,10 @@ During play, the server queues edits until it has settled the hand and recorded
 winnings. It applies the latest values before checking who can play again.
 Hands deal automatically after five seconds whenever at least two connected
 players have chips. The browser displays the game and sends player actions.
-The backend owns the rules, chips, and authoritative state.
+The backend owns the rules, chips, and authoritative state. Players can open the
+chat to read player messages, or the
+session ledger from the table log to review or download the current session’s
+buy-ins, buy-outs, balances, and net results.
 
 ## The system at a glance
 
@@ -72,7 +75,7 @@ of each player’s view. The browser never has to simulate the game itself.
   and identity recovery are not implemented.
 - **History stays private.** The archive retains actions, cards, deck order, and
   results. Authorized offline exports calculate player net chips separately from
-  rebuys and cash-outs; equity calculations and a history UI are future work.
+  rebuys and cash-outs; equity calculations and browsing prior sessions in the app are future work.
 - **Recovery preserves chips, not an interrupted hand.** Restarting with a saved
   checkpoint cancels unfinished hands and refunds contributions. Completed
   payouts remain intact. A storage failure stops play until recovery.

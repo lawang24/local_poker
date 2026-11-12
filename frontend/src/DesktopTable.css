@@ -63,17 +63,6 @@
     border-width: .3cqw;
     border-radius: .45cqw;
   }
-  .app-table .dealer-marker {
-    top: auto; bottom: -.8cqw; right: -.95cqw;
-    width: 3.25cqw; height: 2.65cqw; font-size: 1.4cqw;
-    box-shadow: 0 2px 4px #0005;
-  }
-  .app-table .table-seat:is([data-seat="1"], [data-seat="2"], [data-seat="9"]) .dealer-marker {
-    top: -.8cqw; bottom: auto;
-  }
-  .app-table .table-seat:is([data-seat="6"], [data-seat="7"], [data-seat="8"], [data-seat="9"]) .dealer-marker {
-    right: auto; left: -.95cqw;
-  }
   .app-table .seat-payout { max-width: none; font-size: .9cqw; }
   .app-table .table-bet {
     left: var(--desktop-bet-x);
@@ -193,11 +182,26 @@
     border-radius: .45cqw;
     background: #302e30;
   }
-  .recent-activity { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; min-width: 0; }
-  .recent-activity p {
-    flex: 1; align-content: center; max-height: 33.333%;
+  .chat-strip { position: relative; }
+  .chat-strip.expanded { height: 22cqw; }
+  .recent-chat { flex: 1; min-width: 0; overflow-y: auto; overflow-wrap: anywhere; }
+  .chat-expand {
+    position: absolute; top: .4cqw; right: 5cqw; padding: 0 .5em;
+    background: #282628; color: #ccc;
+  }
+  .recent-chat p:first-child { padding-right: 2em; }
+  .dock-composer {
+    position: absolute; bottom: 100%; right: 0; width: 89%;
+    margin: 0; z-index: 2;
+  }
+  .dock-composer input {
+    width: 100%; min-height: 5.4cqw; border: 0; border-radius: 6px;
+    padding: 0 1.1cqw; font: inherit; background: #fff; color: #242424;
+  }
+  .recent-chat p {
+    min-height: 2.3cqw; align-content: center;
     margin: 0; padding: 0 .65cqw; background: #282628; color: #ccc;
-    font-size: max(12px, .95cqw); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: max(12px, .95cqw); white-space: pre-wrap;
     border-bottom: 2px solid #302e30;
   }
   .new-message { display: grid; place-items: center; width: 4.2cqw; padding: .6cqw; background: #373537; }

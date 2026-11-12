@@ -13,6 +13,7 @@ import { Settings } from "./Settings";
 
 import { ConnectionProgress } from "./ConnectionProgress";
 
+import { SessionLog } from "./SessionLog";
 import { TableChat } from "./TableChat";
 import { useTypingViewport } from "./useTypingViewport";
 
@@ -33,6 +34,8 @@ export default function App() {
   const [pending, setPending] = useState(false);
   const [copied, setCopied] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const logDialog = useRef<HTMLDialogElement>(null);
+  const openLog = () => logDialog.current?.showModal();
   const chatDialog = useRef<HTMLDialogElement>(null);
   const chatButton = useRef<HTMLButtonElement>(null);
   const ws = useRef<WebSocket | null>(null);
@@ -160,7 +163,7 @@ export default function App() {
   return (
     <main className={`app ${joined && state && !settingsOpen ? "app-table" : ""}`}>
       {joined && state ? <TableToolbar name={me?.name || name} status={status}
-        blinds={`${formatAmount(state.small_blind, state.cents)} / ${formatAmount(state.big_blind, state.cents)}`} settingsOpen={settingsOpen} chatButton={chatButton} openChat={() => chatDialog.current?.showModal()}
+        blinds={`${formatAmount(state.small_blind, state.cents)} / ${formatAmount(state.big_blind, state.cents)}`} settingsOpen={settingsOpen} openLog={openLog} chatButton={chatButton} openChat={() => chatDialog.current?.showModal()}
         settings={() => setSettingsOpen(!settingsOpen)} leave={() => {
           setSettingsOpen(false); setJoined(false); setState(null); setStatus("Offline");
           setPending(false); setError(""); sessionStorage.removeItem(`${sessionKey}:token`);
@@ -261,7 +264,8 @@ export default function App() {
               <PokerTable speech={speech} state={state} ready={ready} send={send} />
               <ActionControls key={`${state.hand_number}:${state.street}:${state.actor}:${state.target}:${state.max_raise_to}:${state.cents}`} state={state} ready={ready} send={send} />
             </section>
-            <TableChat dialog={chatDialog} trigger={chatButton} history={state.history} ready={ready} send={text => send({ type: "chat", text })} />
+            <SessionLog dialog={logDialog} state={state} />
+            <TableChat openLog={openLog} dialog={chatDialog} trigger={chatButton} messages={state.chat_history ?? []} ready={ready} send={text => send({ type: "chat", text })} />
           </div>
         </>
       )}

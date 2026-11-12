@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import zlib
 from dataclasses import asdict
 from hashlib import sha256
@@ -33,6 +34,7 @@ def snapshot(table):
             "dealer": table.dealer,
             "hand_number": table.hand_number,
             "history": table.history,
+            "chat_history": table.chat_history,
             "result": table.result,
             "board": table.board,
             "street": table.street,
@@ -47,6 +49,27 @@ def snapshot(table):
         separators=(",", ":"),
         ensure_ascii=False,
     )
+
+
+def split_legacy_history(lines, players):
+    # Old checkpoints stored only display strings. Prefer the longest matching
+    # seated nickname (names can contain colons), then the old chat prefix.
+    names = sorted((p.name for p in players), key=len, reverse=True)
+    history, chat = [], []
+    for line in lines:
+        if re.fullmatch(r"Hand [0-9]+: .* is the dealer\.", line, re.DOTALL):
+            history.append(line)
+            continue
+        name = next((n for n in names if line.startswith(n + ": ")), None)
+        if name is None:
+            prefix, separator, _ = line.partition(": ")
+            known_actor = any(line.startswith(n + " ") for n in names if ": " in n)
+            if not separator or len(prefix) > 24 or known_actor or line.startswith("Hand complete. "):
+                history.append(line)
+                continue
+            name = prefix
+        chat.append({"name": name, "text": line[len(name) + 2:]})
+    return history, chat
 
 
 def restore(payload):
@@ -67,6 +90,10 @@ def restore(payload):
         "big_blind",
     ):
         setattr(table, key, data[key])
+    if "chat_history" in data:
+        table.chat_history = data["chat_history"]
+    else:
+        table.history, table.chat_history = split_legacy_history(table.history, table.players)
     table.auto_deal = True  # Automatic dealing also applies to older checkpoints.
     table.cents = data.get("cents", False)
     table.seven_deuce_bonus = data.get("seven_deuce_bonus", 0)
@@ -84,7 +111,7 @@ def restore(payload):
             "history_started",
             reason="legacy_checkpoint",
             players=table.private_players(),
-            history=table.history,
+            history=data["history"],
             board=table.board,
             street=table.street,
             result=table.result,

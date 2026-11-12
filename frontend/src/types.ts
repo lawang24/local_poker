@@ -9,6 +9,14 @@ export type Player = {
   committed: number;
   all_in: boolean;
 };
+export type LedgerSession = {
+  name: string; start: string; end: string | null; buy_in: number; buy_out: number;
+  movements: { at: string; amount: number; incoming: boolean; reason: "seat_entry" | "seat_removed" | "stack_adjustment" }[];
+};
+export type LedgerRow = {
+  id: string; name: string; buy_in: number; buy_out: number; stack: number; net: number;
+  sessions: LedgerSession[];
+};
 export type TableSettings = {
   small_blind: number;
   big_blind: number;
@@ -17,6 +25,7 @@ export type TableSettings = {
 };
 export type State = TableSettings & {
   players: Player[];
+  ledger: LedgerRow[];
   you: string;
   dealer: string;
   actor: string | null;
@@ -36,6 +45,7 @@ export type State = TableSettings & {
   call_amount: number;
   hand_number: number;
   history: string[];
+  chat_history: { name: string; text: string }[];
   runout_vote: null | {
     hand_id: string;
     eligible: string[];

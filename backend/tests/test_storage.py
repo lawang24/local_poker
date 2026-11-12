@@ -1,3 +1,4 @@
+import json
 import unittest
 from unittest.mock import Mock, patch
 
@@ -69,6 +70,19 @@ class PersistenceTests(unittest.TestCase):
             reloaded.save(snapshot(Table()))
         self.assertEqual(reloaded.version, 2)
 
+    def test_restore_legacy_mixed_history(self):
+        table = Table()
+        table.join("A: B")
+        data = json.loads(snapshot(table))
+        del data["chat_history"]
+        data["history"] = ["Hand 1: A: B is the dealer.", "A: B checks.",
+                           "A: B: hello: table", "Former player: good game", "Hand complete. A: B receives 20"]
+        recovered = restore(json.dumps(data))
+        self.assertEqual(recovered.history, [data["history"][i] for i in (0, 1, 4)])
+        self.assertEqual(recovered.chat_history, [{"name": "A: B", "text": "hello: table"},
+                                                  {"name": "Former player", "text": "good game"}])
+        self.assertEqual(restore(snapshot(recovered)).chat_history, recovered.chat_history)
+
     def test_websocket_restart_recovers_stack_and_chat(self):
         store = MemoryCheckpoint()
         with patch.dict("os.environ", {"DYNAMODB_TABLE": ""}):
@@ -93,7 +107,8 @@ class PersistenceTests(unittest.TestCase):
                     self.assertEqual(ws.receive_json()["id"], session["id"])
                     state = ws.receive_json()["state"]
                     self.assertEqual(state["players"][0]["stack"], 777)
-                    self.assertIn("Alice: Persist me", state["history"])
+                    self.assertEqual(state["chat_history"], [{"name": "Alice", "text": "Persist me"}])
+                    self.assertNotIn("Alice: Persist me", state["history"])
                     self.assertNotIn(session["token"], str(state))
 
     def test_failed_write_stops_play_without_broadcasting_uncommitted_state(self):

@@ -6,6 +6,21 @@ The game engine owns the table and decides what each action means. It is
 synchronous and independent of WebSockets, so rules can be tested without a
 running server. Its implementation is [game.py](../../backend/game.py).
 
+## Session ledger
+
+The [table](../../backend/game.py) groups applied chip transfers by stable player
+ID and seat visit. Reconnecting to a retained seat continues the visit. A kick
+or pruning cashes out the remaining stack and closes the visit. Returning after
+removal opens another visit under the same ID. The ledger balance includes the
+player’s contributions until payout, so outstanding bets do not appear as
+realized losses. Net equals buy-outs plus that balance minus buy-ins. Queued edits
+enter the ledger when applied against the settled stack.
+
+The live ledger covers the current table session. After everyone disconnects or
+the server restarts, the next session starts with each returning player’s actual
+opening stack. Historical movements remain in the private archive when storage
+is enabled. [Ledger tests](../../backend/tests/test_ledger.py) cover these boundaries.
+
 ## Hand lifecycle
 
 The table begins in `waiting`, moves through `preflop`, `flop`, `turn`, and `river`,
@@ -45,7 +60,7 @@ positive integer-unit blinds (SB ≤ BB ≤ 1,000,000), cents mode, and the per-
 2–7 offsuit bonus (0–1,000,000 units, default 0). Between hands, stack and settings edits take effect immediately. Automatic dealing is always enabled.
 Cents mode denominates each integer unit as 0.01 instead of 1 for everyone;
 switching modes preserves underlying chip balances. The default denomination is whole chips. Settings are checkpointed with backward-compatible defaults and
-emit a `settings_changed` archive event. Chat and game activity share a rolling display log of 100 entries.
+emit a `settings_changed` archive event. Chat and game activity each retain their latest 100 entries independently. Chat records the sender’s display name at send time.
 The engine also emits structured, ordered private events for joins, seat removal,
 chip movements, blinds, actions (including forced folds), runout offers/votes/decisions,
 boards (indexed by runout during an all-in), chat, and results.

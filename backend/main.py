@@ -272,10 +272,9 @@ async def websocket_endpoint(websocket: WebSocket):
                             or not 1 <= len(message.strip()) <= 300
                         ):
                             raise InvalidAction("Chat must contain 1–300 characters.")
-                        server.table.log(
-                            f"{player.name}: {message.strip()}", player_id=player.id
-                        )
-                        chat = {"player_id": player.id, "text": message.strip()}
+                        text = message.strip()
+                        server.table.add_chat(player, text)
+                        chat = {"player_id": player.id, "text": text}
                     else:
                         raise InvalidAction("Unknown message type.")
                 except (InvalidAction, json.JSONDecodeError) as exc:

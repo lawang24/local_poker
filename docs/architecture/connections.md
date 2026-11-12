@@ -52,6 +52,12 @@ All messages are JSON text over `/ws`. Clients join before sending game commands
 | Server → client | `state` | `state` contains that player’s complete table view. |
 | Server → client | `error` | `message` explains an invalid request. |
 
+Each player snapshot includes the same `ledger` array for the open table session.
+Rows contain the public player ID, name, buy-in, buy-out, stack, net, and seat
+visits with timestamps and chip movements. The game sends this projection with
+its normal state broadcast, including in memory-only games. It reads no private
+archive records. Amounts use integer wire units and the table’s current denomination.
+
 Each public player includes a zero-based `seat`. Moves and kicks validate under
 the same lock as betting. Kicks save the removal before detaching and closing the
 target socket with `4002`, then broadcast the remaining table. A stale socket
@@ -92,7 +98,7 @@ checkpoints. `result.hands` maps player IDs to public cards in deal order. It in
 After accepting a chat message, the server includes `chat: {player_id, text}`
 beside `state` in that broadcast, using the authenticated sender’s ID and trimmed
 text. This field triggers the live seat bubble; ordinary updates, repairs and
-reconnects do not replay it. The full message remains in table history. Private
+reconnects do not replay it. Snapshots carry the rolling transcript in `state.chat_history` as ordered `{name, text}` entries. The session log reads game activity from `state.history`. Private
 feedback never enters this path.
 
 ## Seat lifecycle

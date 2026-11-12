@@ -26,17 +26,21 @@ betting controls overlay reserved corner/bottom areas. Table geometry stays cons
 between hands and turns. At desktop widths (1024px and up), [DesktopTable.css](../../frontend/src/DesktopTable.css)
 fits a centered 16:9 frame to the available width and height. Nine seats surround the
 full-width stage, with the shared board dealt left to right into five fixed positions.
-Recent activity and chat sit below the table on the left, with betting controls on
+The session log button and chat dock sit below the table on the left, with betting controls on
 the right. Shorter landscape phones also use oval seating with a bottom control lane. Nameplates have two fixed lines for name
-and balance, with transient status or payout alongside the balance. Dealer markers
-stay within the screen. Empty seats use numbered outlined slots.
+and balance, with transient status or payout alongside the balance. One dealer chip follows the server-designated dealer across the felt. It sits clear of the seat’s cards, balance and bet, with an oval profile on landscape tables and a round profile on portrait tables. Empty seats use numbered outlined slots. A connected player
+who has not been dealt into the hand shows a clock and “Waiting” in the card area,
+beside the balance on desktop and above the nameplate on phones. The deal replaces
+the indicator with hole cards.
 The bottom seat’s committed amount is anchored directly above its cards. [TableChat.tsx](../../frontend/src/TableChat.tsx)
-shows the last three activity entries in the desktop dock. Table log opens the full
-history, and New message opens the same dialog with the composer focused. Below
-1024px, Chat & log opens it from the toolbar. Sending closes the dialog and returns
+shows player messages in a scrollable desktop dock. Players can expand it to read earlier messages. Log / Ledger opens [SessionLog.tsx](../../frontend/src/SessionLog.tsx) on the recent activity log.
+The Ledger tab shows sortable player totals, expandable seat visits and chip movements,
+and a CSV download with one row per visit. On narrow screens the amounts form a
+two-column grid beneath each name. New message opens an input above the desktop dock. Enter sends the message. Below
+1024px, Log and Chat open their respective dialogs from the toolbar. Sending closes the dialog and returns
 focus to the opener. Closing without sending preserves the draft. A live chat
 appears at its sender’s seat for six seconds; another message from the same player
-replaces it. Long messages are abbreviated in the bubble and remain complete in the log.
+replaces it. Long messages are abbreviated in the bubble and remain complete in chat.
 [TableToolbar.tsx](../../frontend/src/TableToolbar.tsx) owns a compact Options button,
 connection indicator, and Feedback in the top-right corner. Options opens a native
 modal containing Settings, Invite, Leave, and expandable table instructions. The
@@ -143,12 +147,10 @@ account recovery are not implemented.
 
 While joining or restoring a tab, the browser shows an
 [indeterminate progress bar](../../frontend/src/ConnectionProgress.tsx) and elapsed wait
-time across connection attempts. After three seconds, the panel shows an approximate
-remaining wait based on [Render’s typical one-minute free-service wake-up](https://render.com/docs/free#spinning-down-on-idle).
-It rounds up to ten-second intervals and keeps the original start time across retries.
-If the minute passes, the panel reports the delay and continues retrying. Opening
-the socket removes the wake-up estimate and advances the message to loading
-the table. The first player state ends the wait. Once a table is visible, it stays
+time across connection attempts. While waiting for the server, the panel says
+connecting should take between 30 seconds and 1 minute. Only the elapsed time
+updates; retries continue past a minute. Opening the socket changes the message
+to loading the table. The first player state ends the wait. Once a table is visible, it stays
 on screen during reconnects.
 
 After a connection closes, the browser retries with exponential backoff capped at
