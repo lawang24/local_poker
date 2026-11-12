@@ -18,7 +18,6 @@
 .runout-boards h3 { margin: 0 0 3px; color: #e4edda; text-transform: uppercase; letter-spacing: 1px; font-size: 10px; }
 .app-table .has-two-runouts .community-cards .card { width: min(54px, 7cqw, 9cqh); }
 .runout-winners { margin: 3px auto 0; font-size: 11px; line-height: 1.3; max-height: 2.6em; overflow: auto; overflow-wrap: anywhere; color: #f1edb1; }
-.app-table .has-two-runouts .pot { display: none; }
 @media (max-width: 1023px) {
   .app-table .has-two-runouts .community-cards .card { width: min(34px, 8cqw, 7cqh); }
   .runout-winners { max-width: 72%; font-size: 10px; }

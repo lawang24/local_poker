@@ -194,7 +194,9 @@ header .eyebrow { font-size: 9px; margin-bottom: 2px; color: #a8a8a8; }
   outline: 0; border-radius: 50%; min-height: 360px;
   box-shadow: inset 0 0 0 7px #ffffff04, 0 18px 0 #1c1c1c, 0 28px 30px #0006;
 }
-.pot { background: #145c3870; min-width: 110px; border-radius: 22px; text-align: center; padding: 2px 18px; font-size: 23px; color: white; }
+.pot { position: relative; background: #145c3870; min-width: 110px; border-radius: 22px; text-align: center; padding: 2px 18px; font: 700 23px/1.6 Mulish, sans-serif; color: white; }
+.pot-total { position: absolute; top: -1em; right: 0; padding: 0 .6em; border-radius: .6em; background: #205536; color: white; font: 400 8px/1.7 Mulish, sans-serif; white-space: nowrap; }
+.pot-total small { font-size: .85em; color: #c0d8c8; }
 .pot-label { color: #b3d2bd; font-size: 9px; letter-spacing: .5px; }
 .table-heading { color: #aaa; }
 .table-heading strong { color: #ddd; }
@@ -204,7 +206,6 @@ header .eyebrow { font-size: 9px; margin-bottom: 2px; color: #a8a8a8; }
 .table-stage .felt { position: absolute; inset: 20% 14%; min-height: 0; padding: 0; }
 .board-content { position: absolute; top: 18%; left: 8%; right: 8%; text-align: center; }
 .board-content .pot { display: inline-block; margin: 0 0 16px; min-width: 100px; font-size: 22px; }
-.board-content .pot span { font-size: 10px; color: #b7d2bc; margin-right: 4px; }
 .community-cards { height: 124px; }
 .community-cards .card { width: clamp(48px, 5.8vw, 84px); height: auto; aspect-ratio: 5 / 7; }
 .felt-brand { position: absolute; bottom: 11%; font-size: 15px; opacity: .13; letter-spacing: -1px; color: #fff; }
@@ -594,7 +595,7 @@ button.nameplate:hover, button.nameplate:focus-visible { border-color: #ddd; }
   .app-table .board-content { left: 1%; right: 1%; top: 47%; }
   .app-table .community-cards .card { width: min(44px, 11cqw, 10cqh); }
   .app-table .community-cards .cards { gap: 3px; }
-  .app-table .board-content .pot { font-size: 18px; min-width: 90px; }
+  .app-table .board-content .pot { font-size: min(16px, 4.03vw); min-width: 0; width: min(90px, 22.464vw); padding: 0; }
   .app-table .board-meta { font-size: 8px; }
   .app-table .action-controls.is-playing { bottom: max(4px, env(safe-area-inset-bottom)); padding: 4px 6px; }
   .app-table .action-controls.is-your-turn .action-status { font-size: 10px; letter-spacing: .5px; }

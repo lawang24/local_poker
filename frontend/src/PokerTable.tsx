@@ -29,7 +29,10 @@ function Seat({ player, state, index, select, speech }: {
 }) {
   const mine = player.id === state.you;
   const cards = mine ? state.hand : state.result?.hands[player.id] ?? state.runout_vote?.hands?.[player.id] ?? [];
-  const covered = !mine && state.running && player.in_hand && !player.folded;
+  // Dealt, non-folded opponents keep their hidden cards through the result.
+  // Visibility follows the latest snapshot; never cache private cards.
+  const covered = !mine && player.in_hand && !player.folded
+    && (state.running || (state.street === "complete" && !!state.result));
   const acting = state.actor === player.id;
   const payout = state.result?.payouts[player.id] || 0;
   const result = state.result;
@@ -128,10 +131,17 @@ export function PokerTable({ state, ready, send, speech }: {
   const runouts = state.result?.runouts;
   const bonus = state.result?.seven_deuce_bonus;
   const twice = runouts && runouts.length > 1;
+  // The wire pot already includes every seat's current-street bets, including
+  // folded players. Completed hands can retain commitments after payout.
+  const currentBets = state.running ? players.reduce((sum, p) => sum + p.committed, 0) : 0;
+  const collectedPot = state.pot - currentBets;
   return <div className={`table-stage ${twice ? "has-two-runouts" : ""}`} data-player-count={seats.length}>
     <div className="felt">
       <div className="board-content">
-        <div className="pot" aria-label={`Pot ${formatAmount(state.pot, state.cents)} chips`}><span>Pot</span> {formatAmount(state.pot, state.cents)}</div>
+        <div className="pot" role="group" aria-label="Pot">
+          <div className="pot-collected" aria-label={`Collected pot ${formatAmount(collectedPot, state.cents)} chips`}>{formatAmount(collectedPot, state.cents)}</div>
+          {currentBets > 0 && <div className="pot-total" aria-label={`Total including current bets ${formatAmount(state.pot, state.cents)} chips`}><small>total</small> {formatAmount(state.pot, state.cents)}</div>}
+        </div>
         {twice ? <div className="runout-boards" aria-label="Two runout results">
           {runouts.map((runout, index) => <section key={index} aria-label={`Run ${index + 1}`}>
             <h3>Run {index + 1}</h3>

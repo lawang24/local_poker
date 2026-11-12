@@ -9,8 +9,16 @@ It owns form and connection state; it does not decide game outcomes.
 
 [App.tsx](../../frontend/src/App.tsx) owns name entry, live seat messages, pending actions, and
 connection recovery. [PokerTable.tsx](../../frontend/src/PokerTable.tsx) renders the
-felt, board, bets, and nine fixed numbered seats in server seat order. Empty seats
-are buttons that move the viewer between hands; occupied nameplates open a native
+felt, board, bets, and nine fixed numbered seats in server seat order. The central pot amount excludes
+all players' current-street commitments, including folded players' bets. While
+those bets remain at the seats, a small `total` badge above the pot's right edge
+shows the server's full pot, including those bets. Street transitions collect the
+bets into the central amount and remove the badge. The runout vote retains the
+current-street breakdown until resolution. After payout, the display ignores any
+retained commitments and shows the server's zero pot, including on two-board
+results. This is presentation only; pot-sized raise presets and settlement still
+use the full server pot.
+Empty seats are buttons that move the viewer between hands; occupied nameplates open a native
 modal with player details and a kick confirmation for other players. Clicking
 your own nameplate opens a stack editor using the existing `set_stack` command.
 The editor opens with your queued total if one exists, otherwise your current balance.
@@ -57,7 +65,7 @@ artwork with a compact corner rank and vector suit above the covered portion;
 desktop seats place the larger cards beside the label. Both variants use native
 61:74 artwork, so ranks and suits are never stretched. The deck README records
 the font source and retained SIL Open Font License. Opponents
-show card backs during betting and render the hole cards the server tables during an all-in runout vote or at settlement. Seats that win a pot use the same white nameplate as the active player. Receiving an uncalled bet back alone does not highlight a seat. A compact uppercase ribbon overlays the lower edge of the hole cards from the flop onward. The viewer sees their own live hand and the same ribbon on fully exposed opponents. On portrait screens it sits at the right edge of the seat. A two-board result stacks numbered rows, and a winning run turns purple. The browser reads each label from the server snapshot.
+show card backs during betting and render the hole cards the server tables during an all-in runout vote or at settlement. Dealt, non-folded opponents whose cards remain private keep their backs throughout the completed-hand result, until the next deal replaces it. Folded opponents keep the folded placeholder unless they reveal cards; players not dealt in receive no backs. This uses the current server snapshot without retaining cards locally or expanding public card visibility. Seats that win a pot use the same white nameplate as the active player. Receiving an uncalled bet back alone does not highlight a seat. A compact uppercase ribbon overlays the lower edge of the hole cards from the flop onward. The viewer sees their own live hand and the same ribbon on fully exposed opponents. On portrait screens it sits at the right edge of the seat. A two-board result stacks numbered rows, and a winning run turns purple. The browser reads each label from the server snapshot.
 [ActionControls.tsx](../../frontend/src/ActionControls.tsx) owns the raise form and in-hand actions.
 After settlement it mounts [RevealControls.tsx](../../frontend/src/RevealControls.tsx)
 for players with cards they can voluntarily show. The bottom-right group puts

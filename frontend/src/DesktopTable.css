@@ -91,14 +91,15 @@
     font-size: 2cqw;
     background: #25673877;
   }
-  .app-table .pot span { display: none; }
+  .app-table .pot-total { top: -.6cqw; padding: 0 .36cqw; border-radius: 3.6cqw; font-size: 1.17cqw; line-height: 1.53cqw; }
+  .app-table .pot-total small { font-size: .63cqw; }
   .app-table .community-cards .cards { justify-content: flex-start; flex-wrap: nowrap; gap: .72cqw; }
   .app-table .community-cards .card { width: 8.15cqw; border-radius: .5cqw; }
   .app-table .table-caption { margin: .6cqw 0 0; font-size: max(12px, 1cqw); }
   .app-table .board-meta { margin: .15cqw 0 0; font-size: max(10px, .75cqw); }
   .app-table .community-cards:has(.cards:empty) { min-height: 6cqw; }
   .app-table .has-two-runouts .board-content { top: 7%; }
-  .app-table .has-two-runouts .pot, .app-table .has-two-runouts .felt-brand { display: none; }
+  .app-table .has-two-runouts .felt-brand { display: none; }
   .app-table .has-two-runouts .community-cards .cards { justify-content: center; }
   .app-table .has-two-runouts .community-cards .card { width: 5.7cqw; }
   .app-table .has-two-runouts .runout-boards { gap: .4cqw; }
