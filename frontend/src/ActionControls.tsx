@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { formatAmount, inputAmount, parseAmount } from "./amounts";
 import { RevealControls } from "./RevealControls";
+import { FoldAction } from "./FoldAction";
 import type { State } from "./types";
 
 export type Action = { type: string; seat?: number; player_id?: string; amount?: number; text?: string; small_blind?: number; big_blind?: number; seven_deuce_bonus?: number; cents?: boolean; count?: number; hand_id?: string; hand_number?: number; cards?: number[] };
@@ -67,7 +68,7 @@ export function ActionControls({ state, ready, send }: {
         {state.call_amount > 0 && <button className="call-action" disabled={!ready || !state.call_amount} onClick={() => send({type:"check_call"})}>Call{state.call_amount > 0 ? ` ${fmt(state.call_amount)}` : ""}{state.call_amount > 0 && state.call_amount === me.stack && <small>All-in</small>}</button>}
         <button className="raise-action" disabled={!canRaise} onClick={() => editor.current?.showModal()}>{betLabel}</button>
         {state.call_amount === 0 && <button className="check-action" disabled={!ready || state.call_amount > 0} onClick={() => send({type:"check_call"})}>Check</button>}
-        <button className="fold-action" disabled={!ready} onClick={() => send({type:"fold"})}>Fold</button>
+        <FoldAction ready={ready} callAmount={state.call_amount} playerId={state.you} fold={() => send({type:"fold"})} />
       </div>
     </div>
   </section>;

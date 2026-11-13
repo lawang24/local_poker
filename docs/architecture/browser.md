@@ -84,6 +84,19 @@ presets are clamped to server limits, including short all-in raises. Opening bet
 are labelled Bet, while the wire command remains `raise`. The draft resets when the hand, street, actor,
 target, or maximum changes. Buttons disable while an action is pending or the
 connection is unavailable. The action row stays in place behind the dialog.
+[FoldAction.tsx](../../frontend/src/FoldAction.tsx) asks for confirmation when Fold
+is selected with nothing to call, including the big blind's option. Its white modal,
+wording, session checkbox, and red Cancel / green Confirm buttons follow the supplied
+PokerNow desktop recording; [FoldAction.css](../../frontend/src/FoldAction.css) adapts
+the layout for narrow screens. Cancel or Escape sends nothing. Only Confirm saves
+the checked opt-out in player-scoped `sessionStorage`, suppressing future free-fold
+warnings in that tab session, including after reload. Closing the tab ends that
+preference. Facing a call folds immediately. Losing readiness closes the dialog;
+the action controls' turn key discards it on hand, street, actor, or betting-limit
+changes. Confirmation checks readiness again and prevents duplicate submission.
+Native dialog focus stays inside, initially on Cancel, and returns to the opener.
+The recording does not establish keyboard behavior, mobile layout, or the reference's
+exact session lifetime; these are local behaviors, not verified reference parity.
 [useTypingViewport.ts](../../frontend/src/useTypingViewport.ts) fits bet, chat and
 feedback dialogs to the visible viewport when a keyboard takes up screen space,
 without resizing the table.
