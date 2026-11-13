@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 import main
 from archive import archive_items, decode
 from game import InvalidAction, Table
+from runout_helpers import finish_runout
 from main import GameServer
 from storage import snapshot, restore, StorageError
 
@@ -34,6 +35,7 @@ def all_in(t):
 def twice(t):
     for pid in list(t.runout_vote["eligible"]):
         t.choose_runouts(pid, 2, t.hand_id)
+    finish_runout(t)
 
 
 class RunoutTests(unittest.TestCase):
@@ -56,6 +58,7 @@ class RunoutTests(unittest.TestCase):
         self.assertNotIn("deck_order", json.dumps(view))
         self.assertFalse(any("hand" in p for p in view["players"]))
         t.choose_runouts(b.id, 2, t.hand_id)
+        finish_runout(t)
         self.assertFalse(t.running)
         self.assertEqual(len(t.result["runouts"]), 2)
         cards = sum((r["board"] for r in t.result["runouts"]), []) + a.hand + b.hand
@@ -75,6 +78,7 @@ class RunoutTests(unittest.TestCase):
                 t.choose_runouts(pid, count, hand)
             self.assertEqual(t.runout_vote, before)
         t.choose_runouts(b.id, 1, t.hand_id)
+        finish_runout(t)
         self.assertEqual(len(t.result["runouts"]), 1)
         before = [p.stack for p in t.players]
         with self.assertRaises(InvalidAction):
@@ -154,6 +158,7 @@ class RunoutTests(unittest.TestCase):
         cover = t.players[1]
         self.assertEqual(cover.stack, 100)
         t.disconnect(cover.id)
+        finish_runout(t)
         self.assertFalse(cover.folded)
         self.assertIn(cover.id, t.result['hands'])
         self.assertEqual(len(t.result['runouts']), 1)
@@ -165,6 +170,7 @@ class RunoutTests(unittest.TestCase):
         t.act(a.id, 'raise', 100)
         t.disconnect(a.id)
         t.act(t.actor, 'check_call')
+        finish_runout(t)
         self.assertFalse(a.folded)
         self.assertEqual(len(t.result['runouts']), 1)
 
@@ -178,6 +184,7 @@ class RunoutTests(unittest.TestCase):
         self.assertEqual([p.stack for p in recovered.players], [100, 100])
         t.runout_vote['deadline'] = (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()
         t.choose_runouts(t.players[1].id, 2, t.hand_id)
+        finish_runout(t)
         self.assertEqual(len(t.result['runouts']), 1)
 
     def test_two_runouts_split_side_pots_and_return_uncalled_chips(self):
@@ -219,7 +226,7 @@ class RunoutTimerTests(unittest.IsolatedAsyncioTestCase):
         all_in(self.server.table)
 
     async def asyncTearDown(self):
-        tasks = [t for t in (self.server.deal_task, self.server.runout_task) if t]
+        tasks = [t for t in (self.server.deal_task, self.server.runout_task, self.server.reveal_task) if t]
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
@@ -232,7 +239,9 @@ class RunoutTimerTests(unittest.IsolatedAsyncioTestCase):
         await self.server.broadcast()
         self.assertIs(task, self.server.runout_task)
         await asyncio.sleep(.08)
-        self.assertEqual(len(t.result['runouts']), 1)
+        self.assertEqual(t.runout['count'], 1)
+        self.assertIsNone(t.result)
+        self.assertIsNotNone(self.server.reveal_task)
         self.assertIsNone(self.server.runout_task)
 
     async def test_consent_cancels_deadline(self):
@@ -256,7 +265,10 @@ class RunoutTimerTests(unittest.IsolatedAsyncioTestCase):
 
 class RunoutWebSocketTests(unittest.TestCase):
     def test_choices_shared_reconnect_and_stale_request_rejected(self):
-        with patch.dict('os.environ', {'DYNAMODB_TABLE': ''}):
+        from runout import schedule
+        def fast_schedule(prefix, count):
+            return [{**step, 'at': step['at'] / 100} for step in schedule(prefix, count)]
+        with patch.dict('os.environ', {'DYNAMODB_TABLE': ''}), patch('game.schedule', fast_schedule):
             main.server = GameServer(auto_deal_delay=3600)
             with TestClient(main.app) as client, client.websocket_connect('/ws') as a, client.websocket_connect('/ws') as b:
                 a.send_json({'type': 'join', 'name': 'Alice'})
@@ -279,9 +291,12 @@ class RunoutWebSocketTests(unittest.TestCase):
                     self.assertEqual(a.receive()['code'], 4001)
                     b.receive_json()
                     b.send_json({'type': 'runout', 'count': 2, 'hand_id': hand})
-                    result = b.receive_json()['state']['result']
+                    result = None
+                    while result is None:
+                        result = b.receive_json()['state']['result']
+                        other = replacement.receive_json()['state']['result']
                     self.assertEqual(len(result['runouts']), 2)
-                    self.assertEqual(result, replacement.receive_json()['state']['result'])
+                    self.assertEqual(result, other)
                     b.send_json({'type': 'runout', 'count': 1, 'hand_id': hand})
                     self.assertEqual(b.receive_json()['type'], 'error')
                     b.receive_json(); replacement.receive_json()

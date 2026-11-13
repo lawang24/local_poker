@@ -2,6 +2,7 @@ import json
 import random
 import unittest
 from game import Table, InvalidAction, made_hand
+from runout_helpers import finish_runout
 
 
 class PokerTests(unittest.TestCase):
@@ -80,6 +81,7 @@ class PokerTests(unittest.TestCase):
                              {p.id: [made_hand(p.hand, t.board)] for p in (a, b)})
         for p in (a, b):
             t.choose_runouts(p.id, 2, t.hand_id)
+        finish_runout(t)
         boards = [run["board"] for run in t.result["runouts"]]
         self.assertEqual(t.state(b.id)["shown_hand_strengths"],
                          {p.id: [made_hand(p.hand, board) for board in boards] for p in (a, b)})
@@ -230,6 +232,7 @@ class PokerTests(unittest.TestCase):
         t.start(t.players[0].id)
         self.assertIsNotNone(t.runout_vote)
         t.choose_runouts(t.players[0].id, 1, t.hand_id)
+        finish_runout(t)
         self.assertEqual(t.street, "complete")
         self.assertEqual(len(t.board), 5)
         self.assertEqual(self.total(t), 13)
@@ -240,6 +243,7 @@ class PokerTests(unittest.TestCase):
         self.assertEqual(t.state(t.actor)["call_amount"], 3)
         t.act(t.actor, "check_call")
         t.choose_runouts(t.players[0].id, 1, t.hand_id)
+        finish_runout(t)
         self.assertEqual(t.street, "complete")
         self.assertEqual(self.total(t), 108)
         self.assertEqual(t.result["pots"][0]["amount"], 16)
@@ -373,6 +377,9 @@ class PokerTests(unittest.TestCase):
                 while t.running:
                     actions += 1
                     self.assertLess(actions, 250)
+                    if t.runout:
+                        finish_runout(t)
+                        continue
                     if t.runout_vote:
                         for pid in list(t.runout_vote["eligible"]):
                             if t.runout_vote and pid not in t.runout_vote["votes"]:

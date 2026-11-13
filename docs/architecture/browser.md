@@ -119,9 +119,24 @@ during a pending request, or without a connection. Return to game or Escape lets
 A countdown button reopens the choice until the server resolves it.
 Closing after resolution restores native focus. The browser does not decide the
 outcome from its countdown. [Runouts.css](../../frontend/src/Runouts.css) owns the
-choice and result styling. [PokerTable.tsx](../../frontend/src/PokerTable.tsx) shows
-two labeled boards and each run's payouts after a two-run showdown; seat payouts
-show the aggregate pot award. The felt lists the configured 2–7 amount when
+choice styling. [RunoutBoard.tsx](../../frontend/src/RunoutBoard.tsx) and
+[RunoutBoard.css](../../frontend/src/RunoutBoard.css) render the server's visible
+slots with timestamped face-down/face-up flips. They reserve the board area to
+keep the pot steady. On the second run, the first board shifts upward and dims
+behind an overlapping lower row, then regains full opacity at the second river.
+Reconnect snapshots resume existing stages rather than restarting the animation;
+future faces and payouts are never preloaded into the DOM. Reduced motion keeps
+the same reveal schedule without flips. [PokerTable.tsx](../../frontend/src/PokerTable.tsx)
+shows public live equity, per-run hand labels, and winning-card emphasis. Seat
+payouts show the aggregate gross award, including the winner's own contributed chips,
+not net hand profit. [payoutDisplay.ts](../../frontend/src/payoutDisplay.ts) shows
+the server's `result.stacks_before_payout` balance beside that award while the
+result is visible. This matches the supplied [recording](../verification/payout-video.md).
+It uses the snapshot only when balance plus award equals the current stack and
+the denomination still matches. Stack edits, bonus transfers that change the
+balance, and older results without this field retain the current balance. Actual
+stacks, the stack editor and the ledger always use settled server amounts.
+The felt lists the configured 2–7 amount when
 enabled and shows the collected bonus on a qualifying result. The activity log
 identifies the winner. Existing single-board results remain supported.
 

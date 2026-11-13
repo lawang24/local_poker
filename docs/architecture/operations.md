@@ -76,6 +76,12 @@ resolution, overriding user-level legacy settings. Validate the committed lockfi
 with `npm ci` before lint/build so local dependency checks match CI.
 [History tests](../../backend/tests/test_history.py) validate event capture,
 identity, accounting, migration, and transactional failure behavior offline.
+[Payout display tests](../../backend/tests/test_payout_display.py) reproduce the
+user-supplied run-it-twice recording and separate gross awards from net results.
+The [frontend checks](../../frontend/tests/payoutDisplay.test.mjs) cover the
+pre-award balance and safe fallbacks for stack edits, bonuses and legacy results.
+The [reference record](../verification/payout-video.md) distinguishes visible
+amounts from inferred per-run awards and documents browser coverage limits.
 
 [Browser E2E tests](../../backend/e2e/browser_test.py) run the real Vite frontend
 and Uvicorn backend through Playwright/Chrome, backed by a separate Moto DynamoDB
@@ -113,6 +119,14 @@ subsequent deals, queued rebuys that restore eligibility, restart refunds, and
 persistence-failure guards. [Seating tests](../../backend/e2e/seating_test.py)
 exercise both editors at mobile and desktop sizes, including replacement of an
 accepted edit while a hand is running.
+
+[Runout timing tests](../../backend/tests/test_runout_timing.py) advance a virtual
+clock across every face and settlement boundary, checking privacy, chip
+conservation, disconnects, restart refunds, queued edits and scheduler cancellation.
+The [recording comparison](../verification/runout-timing.md) gives measured video
+offsets and embedded-browser gameplay coverage. Full once/twice hands must also
+be driven through visible controls on phone and desktop, including payout and
+the next automatic deal; unit timings alone do not establish visual parity.
 
 ## Keeping this guide current
 

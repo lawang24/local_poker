@@ -7,8 +7,9 @@ at the table can configure shared blinds, cents denominations, and the optional
 2–7 offsuit bonus from Settings. Players can also set their own total stack.
 During play, the server queues edits until it has settled the hand and recorded
 winnings. It applies the latest values before checking who can play again.
-Hands deal automatically after five seconds whenever at least two connected
-players have chips. The browser displays the game and sends player actions.
+Hands deal automatically whenever at least two connected players have chips.
+The first deal and ordinary results wait five seconds; all-in results hold for
+6.1 seconds after one run or 8.1 seconds after two runs. The browser displays the game and sends player actions.
 The backend owns the rules, chips, and authoritative state. Players can open the
 chat to read player messages, or the
 session ledger from the table log to review or download the current session’s
@@ -56,7 +57,8 @@ configuration, outside the architecture guide.
 
 When all-in betting closes before the river, remaining contenders choose one or
 two runouts with their hands face up. At an ordinary river showdown the server reveals hands in order and automatically mucks beaten hands. After settlement, any dealt player can choose to show either or both of their hidden cards before the next deal. Two runs need unanimous consent; one vote for once, a disconnect or
-a timeout resolves to one. The engine splits each pot across agreed runouts.
+a timeout resolves to one. The engine reveals agreed runouts on a server-owned timeline before splitting
+and settling each pot.
 
 A player joins or reconnects to a seat. When they act, the connection layer passes
 the request to the game engine, which checks the rules and updates the table.
@@ -75,7 +77,8 @@ of each player’s view. The browser never has to simulate the game itself.
   and identity recovery are not implemented.
 - **History stays private.** The archive retains actions, cards, deck order, and
   results. Authorized offline exports calculate player net chips separately from
-  rebuys and cash-outs; equity calculations and browsing prior sessions in the app are future work.
+  rebuys and cash-outs; historical equity analysis and browsing prior sessions in the app are future work.
+  Live all-in equity uses only exposed cards.
 - **Recovery preserves chips, not an interrupted hand.** Restarting with a saved
   checkpoint cancels unfinished hands and refunds contributions. Completed
   payouts remain intact. A storage failure stops play until recovery.

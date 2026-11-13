@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 import main
 from archive import archive_items, decode, query_records
 from export_history import player_report
+from runout_helpers import finish_runout
 from game import InvalidAction, Table
 from storage import DynamoStore, StorageError, restore, snapshot
 
@@ -47,6 +48,7 @@ class HistoryTests(unittest.TestCase):
         table.act(table.actor, "raise", 200)
         table.act(table.actor, "check_call")
         table.choose_runouts(a.id, 1, table.hand_id)
+        finish_runout(table)
         completed = next(e for e in table.events if e["type"] == "hand_completed")
         deck = start["deck_order"]
         self.assertEqual(start["players"][0]["hand"], deck[:2])

@@ -4,9 +4,11 @@ from dataclasses import dataclass, field, asdict
 from copy import deepcopy
 from datetime import datetime, timezone, timedelta
 from hashlib import sha256
+from itertools import combinations
 from uuid import uuid4
 from deck_of_cards import DeckOfCards
 from phevaluator.evaluator import evaluate_cards
+from runout import schedule, equity, RESULT_HOLD
 
 
 UNCHANGED = object()
@@ -79,6 +81,9 @@ class Table:
         self.pending = set()
         self.result = None
         self.runout_vote = None
+        self.runout = None
+        self._runout_steps = []
+        self._runout_cards = []
         self.history = []
         self.chat_history = []
         self.hand_number = 0
@@ -312,6 +317,9 @@ class Table:
         self.board, self.pot, self.result = [], 0, None
         self.river_aggressor = None
         self.runout_vote = None
+        self.runout = None
+        self._runout_steps = []
+        self._runout_cards = []
         self.target, self.min_raise = self.big_blind, self.big_blind
         self.hand_number += 1
         self.street = "preflop"
@@ -429,7 +437,7 @@ class Table:
         self.advance(p.id)
 
     def advance(self, after):
-        if self.runout_vote:
+        if self.runout_vote or self.runout:
             return
         while self.running:
             live = self.live()
@@ -519,24 +527,84 @@ class Table:
         self.runout_vote = None
         self.record("runout_resolved", count=count, reason=reason, votes=votes)
         self.log("Running it twice." if count == 2 else "Running it once.")
-        boards = []
-        for index in range(count):
-            board = list(prefix)
-            for street, end in streets:
-                if len(board) >= end:
-                    continue
-                burned = self.deck.draw()
-                board.extend(self.deck.draw() for _ in range(end - len(board)))
-                self.record("board_dealt", street=street, board=board,
-                            burned=burned, runout=index + 1)
-            boards.append(board)
-        self.board = boards[0]
-        self.street = "river"
+        # Return unmatched chips before revealing, exactly once. Contributions
+        # shrink with the refund, preserving restart refunds and hand net totals.
+        refunds = {}
+        ordered = sorted(self.players, key=lambda p: p.contribution, reverse=True)
+        excess = ordered[0].contribution - ordered[1].contribution
+        if excess > 0:
+            player = ordered[0]
+            player.stack += excess
+            player.contribution -= excess
+            self.pot -= excess
+            refunds[player.id] = excess
+            self.record("uncalled_returned", player_id=player.id, amount=excess)
         for p in self.players:
             p.committed = 0
             p.acted_at = None
         self.target, self.min_raise = 0, self.big_blind
-        self.finish(boards)
+        self.runout = {
+            "hand_id": self.hand_id, "count": count, "active": 0,
+            "started_at": datetime.now(timezone.utc).timestamp(),
+            "hands": {p.id: list(p.hand) for p in self.live()},
+            "boards": [list(prefix)], "revealed_at": [[None] * len(prefix)],
+            "backs_at": [[None] * len(prefix)], "prefix": list(prefix),
+            "refunds": refunds, "equities": {}, "phase": "hands",
+        }
+        self._runout_steps = schedule(len(prefix), count)
+        self.update_runout_equity()
+
+    def update_runout_equity(self):
+        run = self.runout
+        board = run["boards"][run["active"]]
+        if any(c is None for c in board):
+            return
+        hands = tuple(tuple(hand) for hand in run["hands"].values())
+        other = tuple(c for b in run["boards"][:run["active"]] for c in b)
+        run["equities"] = dict(zip(run["hands"], equity(hands, tuple(board), other)))
+
+    def advance_runout(self, now=None):
+        """Apply due stages once; future faces never enter a public snapshot."""
+        if not self.runout:
+            return
+        now = datetime.now(timezone.utc).timestamp() if now is None else now
+        run = self.runout
+        while self._runout_steps and run["started_at"] + self._runout_steps[0]["at"] <= now:
+            step = self._runout_steps.pop(0)
+            at = run["started_at"] + step["at"]
+            if step["kind"] == "payout":
+                boards = deepcopy(run["boards"])
+                self.board = boards[0]
+                self.street = "river"
+                self.finish(boards)
+                return
+            index = step["run"]
+            if step["kind"] == "backs":
+                if len(run["boards"]) <= index:
+                    run["boards"].append(list(run["prefix"]))
+                    run["revealed_at"].append([None] * len(run["prefix"]))
+                    run["backs_at"].append([None] * len(run["prefix"]))
+                run["active"] = index
+                run["phase"] = "dealing"
+                self.street = step["street"]
+                burned = self.deck.draw()
+                self._runout_cards = [self.deck.draw() for _ in range(step["size"])]
+                run["boards"][index].extend([None] * step["size"])
+                run["revealed_at"][index].extend([None] * step["size"])
+                run["backs_at"][index].extend([at] * step["size"])
+                self.record("board_dealt", street=self.street,
+                            board=[c for c in run["boards"][index] if c] + self._runout_cards,
+                            burned=burned, runout=index + 1)
+            else:
+                board = run["boards"][index]
+                slot = len(board) - len(self._runout_cards) + step["card"]
+                board[slot] = self._runout_cards[step["card"]]
+                run["revealed_at"][index][slot] = at
+                if index == 0:
+                    self.board = [c for c in board if c]
+                if all(board):
+                    run["phase"] = "river_pause" if len(board) == 5 else "street_pause"
+                    self.update_runout_equity()
 
     def settle_seven_deuce(self, live, runouts):
         if not self.seven_deuce_bonus:
@@ -561,7 +629,7 @@ class Table:
         return None
 
     def showdown_hands(self, live, ranks):
-        if any(p.stack == 0 for p in live):
+        if self.runout or any(p.stack == 0 for p in live):
             return {p.id: p.hand for p in live}
 
         # In show order, table the first hand and every hand that ties or beats it.
@@ -642,6 +710,8 @@ class Table:
         else:
             payouts = {p.id: p.contribution for p in self.players}
         opening_stacks = {p.id: p.stack + p.contribution for p in self.players if p.in_hand}
+        # Presentation snapshot only: accounting still settles immediately below.
+        stacks_before_payout = {p.id: p.stack for p in self.players}
         for p in self.players:
             p.stack += payouts[p.id]
         bonus = self.settle_seven_deuce(live, runouts)
@@ -650,11 +720,34 @@ class Table:
         self.result = {
             "cents": self.cents,
             "payouts": payouts,
+            "stacks_before_payout": stacks_before_payout,
             "pots": pots,
             "hands": shown,
             "seven_deuce_bonus": bonus,
             "runouts": runouts if len(live) > 1 else [],
         }
+        # Only already tabled winners get public best-five highlights. Union
+        # across winning runs keeps a useful hole card bright on either board.
+        winning_cards = {}
+        for run in runouts:
+            for pid in {pid for pot in run["pots"] for pid in pot["winners"]}:
+                if pid not in shown or len(shown[pid]) != 2:
+                    continue
+                hand = shown[pid]
+                best = evaluate_cards(*(hand + run["board"]))
+                used = winning_cards.setdefault(pid, set())
+                for five in combinations(hand + run["board"], 5):
+                    if evaluate_cards(*five) == best:
+                        used.update(c for c in hand if c in five)
+        self.result["winning_cards"] = {pid: sorted(cards) for pid, cards in winning_cards.items()}
+        if self.runout:
+            self.result["runout_presentation"] = {
+                "result_hold": RESULT_HOLD[self.runout["count"]],
+                "refunds": self.runout["refunds"],
+            }
+            self.runout = None
+            self._runout_steps = []
+            self._runout_cards = []
         self.log(
             "Hand complete. "
             + ", ".join(
@@ -713,7 +806,7 @@ class Table:
             # Betting is closed, including for a covering player with chips left.
             # Keep their pot eligibility and resolve the choice conservatively.
             self.resolve_runouts(1, "disconnect")
-        elif self.running and p.in_hand and not p.folded and p.stack > 0:
+        elif self.running and not self.runout and p.in_hand and not p.folded and p.stack > 0:
             p.folded = True
             self.record(
                 "action",
@@ -802,18 +895,20 @@ class Table:
         )
         result = self.result or {}
         boards = [run["board"] for run in result.get("runouts") or []] or [self.board]
-        shown = (self.runout_vote or result).get("hands", {})
+        if self.runout:
+            boards = [[c for c in b if c] for b in self.runout["boards"]]
+        shown = (self.runout_vote or self.runout or result).get("hands", {})
         shown_strengths = {}
         strengths = []
         if len(boards[0]) >= 3:
             shown_strengths = {
-                pid: [made_hand(hand, board) for board in boards]
+                pid: [made_hand(hand, board) if len(board) >= 3 else "" for board in boards]
                 for pid, hand in shown.items() if len(hand) == 2
             }
             if viewer in shown_strengths:
                 strengths = shown_strengths[viewer]
             elif p.hand and not p.folded:
-                strengths = [made_hand(p.hand, board) for board in boards]
+                strengths = [made_hand(p.hand, board) if len(board) >= 3 else "" for board in boards]
         return {
             "players": [
                 {
@@ -855,6 +950,8 @@ class Table:
             "call_amount": min(p.stack, max(0, self.target - p.committed)),
             "result": self.result,
             "runout_vote": deepcopy(self.runout_vote),
+            "runout": deepcopy(self.runout),
+            "server_time": datetime.now(timezone.utc).timestamp() if self.runout else 0,
             "history": self.history,
             "chat_history": self.chat_history,
             "hand_number": self.hand_number,

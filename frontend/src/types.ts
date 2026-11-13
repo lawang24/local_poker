@@ -46,6 +46,13 @@ export type State = TableSettings & {
   hand_number: number;
   history: string[];
   chat_history: { name: string; text: string }[];
+  server_time: number;
+  runout: null | {
+    hand_id: string; count: number; active: number; started_at: number;
+    hands: Record<string, string[]>; boards: (string | null)[][];
+    revealed_at: (number | null)[][]; backs_at: (number | null)[][];
+    equities: Record<string, number>; phase: string;
+  };
   runout_vote: null | {
     hand_id: string;
     eligible: string[];
@@ -54,8 +61,11 @@ export type State = TableSettings & {
     deadline: string;
   };
   result: null | {
+    runout_presentation?: { result_hold: number; refunds: Record<string, number> };
     cents?: boolean;
     payouts: Record<string, number>;
+    stacks_before_payout?: Record<string, number>;
+    winning_cards?: Record<string, string[]>;
     pots: { amount: number; winners: string[] }[];
     hands: Record<string, string[]>;
     shown_indices?: Record<string, number[]>;

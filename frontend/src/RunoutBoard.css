@@ -1,0 +1,63 @@
+/* Keep the five board slots and pot fixed throughout both recorded runouts. */
+.runout-display {
+  --board-card-width: min(84px, 8cqw, 18cqh);
+  --board-card-height: calc(var(--board-card-width) * 74 / 61);
+  --board-gap: 8px;
+  position: relative;
+  width: calc(var(--board-card-width) * 5 + var(--board-gap) * 4);
+  height: calc(var(--board-card-height) * 1.43);
+  margin-inline: auto;
+}
+.app-table .runout-display .cards { flex-wrap: nowrap; justify-content: flex-start; }
+.app-table .runout-card { display: block; flex: 0 0 auto; perspective: 700px; }
+.app-table .runout-card > .cards { display: block; }
+.app-table .runout-card .card { display: block; margin: 0; }
+.app-table .runout-back {
+  box-sizing: border-box; border: 3px solid #fff; border-radius: 5px;
+  background: repeating-linear-gradient(125deg,#bd6666 0 2px,#c36d6d 2px 4px);
+  animation: runout-back-flip .1s linear var(--back-delay) both;
+}
+.runout-card.revealing > .cards { animation: runout-face-flip .1s ease-out var(--flip-delay) both; }
+@keyframes runout-back-flip { from { transform: rotateY(0); } to { transform: rotateY(90deg); } }
+@keyframes runout-face-flip { from { transform: rotateY(-90deg); } to { transform: rotateY(0); } }
+.runout-row { position: relative; transition: opacity .2s ease; }
+
+.runout-display.two-boards .runout-row:first-child { transform: translateY(-15%); }
+.runout-display.two-boards .runout-row + .runout-row { position: absolute; top: calc(var(--board-card-height) * .43); left: 1.5%; width: 100%; }
+.runout-display.dim-first .runout-row:first-child { opacity: .45; }
+.app-table .has-two-runouts .board-content { top: 13%; }
+.app-table .has-two-runouts .runout-display .community-cards .cards { justify-content: flex-start; }
+.app-table .has-two-runouts .runout-display .community-cards .card { width: min(84px, 8cqw, 18cqh); }
+.equity-badge {
+  position: absolute; z-index: 4; top: -7%; right: -5%;
+  padding: 2px 5px; border-radius: 10px; color: white;
+  background: #858585; font: 700 max(9px, .62cqw)/1.2 Arial, sans-serif;
+}
+.equity-badge.ahead { background: #55b97a; }
+.equity-badge.behind { background: #b94b54; }
+.tabling-hand .cards { animation: runout-face-flip .2s ease-out both; }
+.app-table .is-winner .nameplate { background: #f7ffb6; box-shadow: 0 0 25px #e8ef8bb0; }
+@media (min-width: 1024px) {
+  .runout-display { --board-card-width: 8.15cqw; --board-gap: .72cqw; }
+  .app-table .has-two-runouts .runout-display .community-cards .card { width: 8.15cqw; }
+}
+@media (max-width: 1023px) and (orientation: portrait) {
+  .runout-display { --board-card-width: min(44px, 11cqw, 10cqh); --board-gap: 3px; }
+  .app-table .has-two-runouts .runout-display .community-cards .card { width: min(44px, 11cqw, 10cqh); }
+  .app-table .has-two-runouts .board-content { top: 47%; }
+}
+@media (max-width: 1023px) and (orientation: landscape) {
+  .runout-display { --board-card-width: min(38px, 16cqh); --board-gap: 3px; }
+  .app-table .has-two-runouts .runout-display .community-cards .card { width: min(38px, 16cqh); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .runout-row { transition: none; }
+  .runout-card.revealing > .cards, .app-table .runout-back, .tabling-hand .cards { animation: none; }
+}
+
+@property --equity-percent { syntax: '<integer>'; inherits: false; initial-value: 0; }
+.equity-badge { transition: --equity-percent .7s ease-out; counter-set: equity var(--equity-percent); }
+.equity-badge::after { content: counter(equity) '%'; }
+@starting-style { .equity-badge { --equity-percent: 0; } }
+@media (prefers-reduced-motion: reduce) { .equity-badge { transition: none; } }
+.app-table .seat-cards .card.unused-card { opacity: .3; }

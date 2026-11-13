@@ -23,7 +23,7 @@ async def lifespan(app):
     try:
         yield
     finally:
-        tasks = [task for task in (server.deal_task, server.runout_task) if task]
+        tasks = [task for task in (server.deal_task, server.runout_task, server.reveal_task) if task]
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
@@ -42,6 +42,31 @@ class GameServer:
     deal_task: asyncio.Task | None = None
     auto_deal_delay: float = 5
     runout_task: asyncio.Task | None = None
+    reveal_task: asyncio.Task | None = None
+
+    def schedule_reveals(self):
+        if self.failed or not self.table.runout:
+            if self.reveal_task and self.reveal_task is not asyncio.current_task():
+                self.reveal_task.cancel()
+                self.reveal_task = None
+        elif self.reveal_task is None:
+            self.reveal_task = asyncio.create_task(self.reveal_runout(self.table.runout))
+
+    async def reveal_runout(self, run):
+        try:
+            while not self.failed and self.table.runout is run:
+                deadline = run["started_at"] + self.table._runout_steps[0]["at"]
+                await asyncio.sleep(max(0, deadline - datetime.now(timezone.utc).timestamp()))
+                async with self.lock:
+                    if self.failed or self.table.runout is not run:
+                        break
+                    self.table.advance_runout()
+                    await self.broadcast()
+        except StorageError:
+            pass
+        finally:
+            if self.reveal_task is asyncio.current_task():
+                self.reveal_task = None
 
     def schedule_runout(self):
         vote = self.table.runout_vote
@@ -78,7 +103,8 @@ class GameServer:
 
     async def deal_next(self):
         try:
-            await asyncio.sleep(self.auto_deal_delay)
+            presentation = (self.table.result or {}).get("runout_presentation", {})
+            await asyncio.sleep(max(self.auto_deal_delay, presentation.get("result_hold", 0)))
             async with self.lock:
                 self.deal_task = None
                 if self.can_auto_deal():
@@ -101,6 +127,7 @@ class GameServer:
             except Exception as exc:
                 self.failed = True
                 self.schedule_runout()
+                self.schedule_reveals()
                 self.schedule_deal()
                 logging.error(
                     "Game persistence failed (%s); stopping play.", type(exc).__name__
@@ -176,6 +203,7 @@ class GameServer:
 
         self.schedule_deal()
         self.schedule_runout()
+        self.schedule_reveals()
 
 
 server = GameServer()

@@ -69,26 +69,50 @@ The nullable `queued_stack` is visible only to its owner. All players receive
 `queued_settings` with the four proposed settings, or null. Rejoining a retained
 seat restores these values from the server. Both queues clear at settlement.
 New completed results include `cents` so payout displays retain the hand’s denomination.
+`result.stacks_before_payout` maps public player IDs to their balances immediately
+before pot settlement. This optional presentation snapshot survives reconnects
+and checkpoint recovery; it never replaces authoritative `players[].stack`.
+It is captured before the 2–7 bonus and queued stack/settings edits. Clients must
+not reconstruct it by subtracting awards from an edited current balance.
 Settings requests validate all fields before mutation, and use the same lock,
 checkpoint, and broadcast path as game actions.
 
-The server owns one cancellable five-second deal task whenever no hand is running
+The server owns one cancellable deal task whenever no hand is running
 and at least two connected players have chips, including before the first hand.
+It waits five seconds normally, or the completed all-in result’s 6.1/8.1-second
+`runout_presentation.result_hold`.
 Ordinary broadcasts do not reset the delay. Starting a hand through the legacy
 command or losing eligible players cancels the timer. Eligibility is rechecked
 under the game lock before dealing. Server shutdown cancels the task, and
 persistence failure prevents further deals.
 
-From the flop onward, `hand_strengths` contains the viewer’s live or fully shown hand label for each board in run order. `shown_hand_strengths` maps player IDs to the same labels only for complete hands already public in `runout_vote.hands` or `result.hands`. A one-card reveal has no public label. Both fields reset on a new deal.
+From the flop onward, `hand_strengths` contains the viewer’s live or fully shown hand label for each board in run order. `shown_hand_strengths` maps player IDs to the same labels only for complete hands already public in `runout_vote.hands`, `runout.hands` or `result.hands`. A one-card reveal has no public label. Both fields reset on a new deal.
 
 Snapshots include nullable `runout_vote` with the hand ID, eligible player IDs,
 recorded votes, a UTC deadline, and the tabled contenders’ hole cards in `hands`. A separate cancellable task in
 [GameServer](../../backend/main.py) resolves unanswered offers to one run under the
-game lock, then checkpoints and broadcasts the result. Ordinary broadcasts do not
+game lock, then checkpoints and broadcasts the beginning of the runout. Ordinary broadcasts do not
 reset this deadline. Resolution, shutdown and storage failure cancel the task;
 late votes resolve to one run and stale hand IDs are rejected. A pending vote is
 still a running hand, so neither the next-deal timer nor between-hand commands can
 interrupt it. Replacement connections retain votes and the original deadline.
+During the reveal sequence, nullable `runout` carries the hand ID, run count,
+active run index, public `hands`, `boards` (null slots for unrevealed faces),
+per-slot `backs_at` and `revealed_at` UTC epoch seconds, `started_at`, current
+`phase`, and public-card `equities`. `server_time` is sampled when building an
+active runout snapshot; it is zero outside that phase. Clients use those times
+for animation progress without deciding when to reveal cards or settle chips.
+The legacy `board` contains only exposed faces of run one. Hand labels use only
+exposed faces, and skip incomplete flops.
+
+A separate cancellable reveal task advances due stages under the same game lock
+and save-before-broadcast boundary. Ordinary broadcasts never restart it. Absolute
+deadlines prevent cumulative timer drift; delayed clients see the latest stage.
+Shutdown and storage failure cancel it. No next deal can be scheduled until
+settlement ends the running hand. Completed `runout_presentation` retains the
+result hold and early `refunds`; `winning_cards` includes only public winners'
+hole cards used in a best five-card hand across their winning runs.
+
 Completed `result.runouts` contains the board, per-run payouts and pot layers for
 each run, while `result.payouts` remains the total (including refunds).
 An awarded `result.seven_deuce_bonus` contains the `winner` ID, actual `payments`

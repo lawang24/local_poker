@@ -37,13 +37,34 @@ Each run copies the existing board and draws its remaining streets, including
 burn cards, sequentially from the same deck without reshuffling or replacement.
 Every contested main/side-pot layer is divided between runs before evaluating
 winners; an odd chip goes to the first run. Ties within each run award odd chips
-clockwise left of the dealer. Uncalled contributions are returned once, outside
-runout payouts. The result includes each run's board, pots and payouts, alongside
+clockwise left of the dealer. Uncalled contributions return before the timed
+runout begins, reducing both the pot and refundable contributions exactly once.
+They are recorded separately from runout payouts. The result includes each run's board, pots and payouts, alongside
 aggregate payouts; the legacy `board` is the first run. If insufficient cards
 remain for two runs, the engine falls back to one.
-The result stays visible for five seconds before the next automatic deal when at
-least two connected players have chips. The first hand uses the same delay;
-otherwise the table waits until enough funded players connect.
+Settlement also snapshots `stacks_before_payout` for the result presentation.
+Pot awards, bonus transfers, net history and queued edits still settle in their
+existing order; the snapshot does not delay or alter chip ownership.
+The result stays visible for 6.1 seconds after one all-in run, or 8.1 seconds
+after two. Ordinary results and the first hand use five seconds. The next deal
+requires at least two connected players with chips; otherwise the table waits.
+
+[runout.py](../../backend/runout.py) defines the reveal schedule measured from the
+supplied once/twice recordings. After consent, the hand remains running with no
+actor. Each street first publishes face-down slots, then one face at a time;
+the flop faces stagger by 175 ms. Run one completes before run two starts.
+The full contested pot remains outstanding through the final river pause, and
+only the final scheduled stage calls settlement, records net results, and applies
+queued edits. Existing board prefixes are shared and never replayed. Disconnects
+cannot fold a contender after consent. A restart still refunds the unfinished
+hand, including during a reveal, without returning an earlier refund twice.
+
+Live equity is calculated from public contenders and revealed board cards only,
+never the actual remaining deck or folded cards. Flop, turn and river enumerate
+possible completions; preflop uses 2,000 deterministic samples. Percentages are
+rounded, so multiway totals can differ slightly from 100. Each new run evaluates
+its own board and excludes cards already exposed on earlier runs. Best-five
+highlights are emitted only for already public winning hands.
 
 ## Rules and shared state
 
