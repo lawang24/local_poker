@@ -4,6 +4,7 @@ import { formatAmount, inputAmount, parseAmount } from "./amounts";
 import { Cards } from "./Cards";
 import { RunoutBoard } from "./RunoutBoard";
 import type { Player, State } from "./types";
+import { TurnTimer } from "./TurnTimer";
 import { payoutBalance } from "./payoutDisplay";
 
 // Percentage anchors run clockwise from seat one. All viewers share the
@@ -49,8 +50,8 @@ function Seat({ player, state, index, select, speech }: {
     ? wonRuns.some(Boolean)
     : result?.pots.some(pot => pot.winners.includes(player.id));
   const equity = state.runout?.equities[player.id];
-  const waiting = player.connected && !player.in_hand;
-  const label = !player.connected ? "Disconnected" : player.folded ? "Folded"
+  const waiting = player.connected && (!player.in_hand || player.away);
+  const label = player.away ? "Away" : !player.connected ? "Disconnected" : player.folded ? "Folded"
     : player.all_in && state.running ? "All-in" : acting ? "To act"
     : waiting ? "Waiting" : "";
   return <article
@@ -67,7 +68,7 @@ function Seat({ player, state, index, select, speech }: {
           <circle cx="12" cy="12" r="9.5" />
           <path d="M12 6v6H7" />
         </svg>
-        Waiting
+        {player.away ? "Away" : "Waiting"}
       </span>}
       <div className={`seat-cards ${!mine && state.runout && state.server_time - state.runout.started_at < .2 ? "tabling-hand" : ""}`}>
         {equity !== undefined && <span className={`equity-badge ${equity > 50 ? "ahead" : equity < 50 ? "behind" : "tied"}`} style={{ "--equity-percent": equity } as CSSProperties} aria-label={`${player.name} equity ${equity}%`} />}
@@ -79,6 +80,7 @@ function Seat({ player, state, index, select, speech }: {
         {payout > 0 && <span className="seat-payout">+{formatAmount(payout, state.result?.cents ?? state.cents)}</span>}
         {label && !waiting && !payout && <span className="player-status">{label}</span>}
       </button>
+      {acting && state.turn_deadline != null && <TurnTimer key={`${state.turn_deadline}:${state.paused}:${state.server_time}`} state={state} />}
       {!!strengths?.length && <div className={`hand-strength ${strengths.length > 1 ? "two-runs" : ""}`} aria-live="polite">
         <span className="sr-only">{mine ? "Your" : player.name + "’s"} made hand: </span>
         <div className="hand-badge">
@@ -131,7 +133,7 @@ export function PokerTable({ state, ready, send, speech }: {
   const players = state.players;
 
   const dealer = players.find(p => p.id === state.dealer);
-  const eligible = players.filter(p => p.connected && p.stack > 0).length;
+  const eligible = players.filter(p => p.connected && !p.away && p.stack > 0).length;
   const runouts = state.runout?.boards ?? state.result?.runouts;
   const bonus = state.result?.seven_deuce_bonus;
   const twice = runouts && runouts.length > 1;
@@ -147,7 +149,7 @@ export function PokerTable({ state, ready, send, speech }: {
           {currentBets > 0 && <div className="pot-total" aria-label={`Total including current bets ${formatAmount(state.pot, state.cents)} chips`}><small>total</small> {formatAmount(state.pot, state.cents)}</div>}
         </div>
         {state.runout || state.result?.runout_presentation || twice ? <RunoutBoard state={state} /> : <div className="community-cards"><Cards cards={state.board} /></div>}
-        <p className="table-caption">{bonus ? `2–7 offsuit bonus +${formatAmount(bonus.total, state.result?.cents ?? state.cents)}` : state.runout_vote ? "Choosing runouts" : state.runout ? `Running it ${state.runout.count === 2 ? "twice" : "once"}` : state.running ? `${players.find(p => p.id === state.actor)?.name || "Table"} to act` : eligible < 2 ? "Waiting for players with chips" : state.street === "complete" ? "Next hand starting soon" : "First hand starting soon"}</p>
+        <p className="table-caption">{state.paused ? "Game paused" : bonus ? `2–7 offsuit bonus +${formatAmount(bonus.total, state.result?.cents ?? state.cents)}` : state.runout_vote ? "Choosing runouts" : state.runout ? `Running it ${state.runout.count === 2 ? "twice" : "once"}` : state.running ? `${players.find(p => p.id === state.actor)?.name || "Table"} to act` : eligible < 2 ? "Waiting for players with chips" : state.street === "complete" ? "Next hand starting soon" : "First hand starting soon"}</p>
         <p className="board-meta">Hand #{state.hand_number} · {state.street}<span className="board-blinds"> · {formatAmount(state.small_blind, state.cents)} / {formatAmount(state.big_blind, state.cents)}</span>{state.seven_deuce_bonus > 0 && ` · 2–7: ${formatAmount(state.seven_deuce_bonus, state.cents)}`}</p>
       </div>
       <span className="felt-brand" aria-hidden="true">larrypokernow</span>

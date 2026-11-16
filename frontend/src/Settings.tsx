@@ -5,7 +5,7 @@ import { formatAmount, inputAmount, parseAmount } from "./amounts";
 
 function describeSettings(settings: TableSettings) {
   const amount = (value: number) => formatAmount(value, settings.cents);
-  return `${amount(settings.small_blind)} / ${amount(settings.big_blind)} blinds · ${settings.cents ? "Cents" : "Whole chips"} · 2–7 bonus ${amount(settings.seven_deuce_bonus)}`;
+  return `${amount(settings.small_blind)} / ${amount(settings.big_blind)} blinds · ${settings.cents ? "Cents" : "Whole chips"} · 2–7 bonus ${amount(settings.seven_deuce_bonus)} · Timer ${settings.turn_seconds ? `${settings.turn_seconds}s` : "off"}`;
 }
 
 export function Settings({ state, ready, send, back }: {
@@ -16,10 +16,12 @@ export function Settings({ state, ready, send, back }: {
   const [sb, setSb] = useState(inputAmount(saved.small_blind, saved.cents));
   const [bb, setBb] = useState(inputAmount(saved.big_blind, saved.cents));
   const [bonusInput, setBonusInput] = useState(inputAmount(saved.seven_deuce_bonus, saved.cents));
+  const [timerInput, setTimerInput] = useState(saved.turn_seconds ? String(saved.turn_seconds) : "");
+  const seconds = timerInput.trim() === "" ? 0 : Number(timerInput);
   const bonus = parseAmount(bonusInput, cents);
   const small = parseAmount(sb, cents), big = parseAmount(bb, cents);
-  const valid = small > 0 && big >= small && big <= 1_000_000 && bonus >= 0 && bonus <= 1_000_000;
-  const changed = small !== saved.small_blind || big !== saved.big_blind || cents !== saved.cents || bonus !== saved.seven_deuce_bonus;
+  const valid = Number.isInteger(seconds) && seconds >= 0 && seconds <= 600 && small > 0 && big >= small && big <= 1_000_000 && bonus >= 0 && bonus <= 1_000_000;
+  const changed = seconds !== saved.turn_seconds || small !== saved.small_blind || big !== saved.big_blind || cents !== saved.cents || bonus !== saved.seven_deuce_bonus;
   return <section className="settings-page panel" aria-labelledby="settings-title">
     <button type="button" onClick={back}>← Back to table</button>
     <p className="eyebrow">SHARED LOBBY</p>
@@ -31,7 +33,7 @@ export function Settings({ state, ready, send, back }: {
     </div>}
     <form onSubmit={e => {
       e.preventDefault();
-      if (ready && valid && changed) send({ type: "settings", small_blind: small, big_blind: big, cents, seven_deuce_bonus: bonus });
+      if (ready && valid && changed) send({ type: "settings", small_blind: small, big_blind: big, cents, seven_deuce_bonus: bonus, turn_seconds: seconds });
     }}>
       <fieldset disabled={!ready}>
         <legend>Denominations</legend>
@@ -58,6 +60,14 @@ export function Settings({ state, ready, send, back }: {
             value={bonusInput} onChange={e => setBonusInput(e.target.value)} aria-describedby="bonus-help" />
         </label>
         <p id="bonus-help" className="hint">Win with 2–7 offsuit by taking the main pot outright on every board or by getting everyone to fold. Each other player dealt in pays up to the amount they have left. Set to 0 to turn off.</p>
+      </fieldset>
+      <fieldset disabled={!ready}>
+        <legend>Turn timer</legend>
+        <label>Decision Time Limit (seconds) (blank for no limit)
+          <input type="number" min={0} max={600} step={1} value={timerInput}
+            onChange={e => setTimerInput(e.target.value)} aria-describedby="timer-help" />
+        </label>
+        <p id="timer-help" className="hint">When time runs out, you automatically check if allowed, otherwise fold. Set 1–600 seconds, or leave blank to turn off.</p>
       </fieldset>
       <div className="settings-save">
         <button className="primary" disabled={!ready || !valid || !changed}>{state.running ? "Queue settings" : "Save settings"}</button>

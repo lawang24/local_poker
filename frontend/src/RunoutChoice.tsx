@@ -6,13 +6,14 @@ import "./Runouts.css";
 export function RunoutChoice({ state, ready, send }: {
   state: State; ready: boolean; send: (action: Action) => void;
 }) {
+  ready = ready && !state.paused;
   const vote = state.runout_vote!;
   const dialog = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(true);
   const [now, setNow] = useState(Date.now);
   const involved = vote.eligible.includes(state.you);
   const chosen = vote.votes[state.you];
-  const remaining = Math.max(0, Math.ceil((Date.parse(vote.deadline) - now) / 1000));
+  const remaining = Math.max(0, Math.ceil((Date.parse(vote.deadline) - (state.paused_at == null ? now : state.paused_at * 1000)) / 1000));
   const waiting = vote.eligible.filter(id => vote.votes[id] === undefined);
   useEffect(() => {
     const element = dialog.current;
@@ -38,7 +39,7 @@ export function RunoutChoice({ state, ready, send }: {
         <strong>{vote.votes[id] === 2 ? "Twice" : "Choosing…"}</strong>
       </li>)}
     </ul>
-    <p className="runout-timeout">{remaining > 0 ? `Runs once in ${remaining}s unless everyone chooses twice.` : "Resolving the runout…"}</p>
+    <p className="runout-timeout">{state.paused ? "Game paused" : remaining > 0 ? `Runs once in ${remaining}s unless everyone chooses twice.` : "Resolving the runout…"}</p>
     <button type="button" onClick={() => setOpen(false)}>Return to game</button>
     {!ready && <p role="status">Waiting for connection or update…</p>}
   </dialog>;

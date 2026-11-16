@@ -13,6 +13,29 @@ With `DYNAMODB_TABLE` empty, play remains memory-only and history is not retaine
 provides paginated reads. [GameServer](../../backend/main.py) owns the save boundary;
 boto3 calls run off the event loop while game changes remain ordered by one lock.
 
+## Environment separation
+
+[activity.py](../../backend/activity.py) validates the server-owned
+`POKER_ENVIRONMENT`: `development` (the default), `test`, `staging`, or
+`production`. Invalid values stop startup. Clients cannot select this label.
+Every persisted checkpoint, archive item, compressed event, player result,
+identity/profile and feedback record carries `environment`. Non-production
+partition keys have an `ENV#<environment>#` prefix, including the checkpoint
+and identity keys. The table below shows the base keys before that prefix.
+Even if a development process is accidentally pointed at the production table
+names, it neither loads nor overwrites the production game, identities or logs.
+Separate physical tables remain recommended for access and capacity isolation;
+this namespace is an application boundary, not an IAM security boundary.
+
+Production retains the original keys so existing seats and balances recover.
+New production writes are labeled; old records remain unclassified. Exports
+select exactly one environment and exclude unlabeled records by default.
+`--include-legacy` is available only with production and labels those records
+`legacy`; it does not claim they were real play. Past testing cannot be reliably
+identified from old records and is not automatically deleted or relabeled.
+Tests on the production backend are still production activity: use a separate
+backend configured as `test` for bot play.
+
 ## Access patterns and schema
 
 The existing checkpoint table keeps its string partition key `pk=GAME#GLOBAL`,
@@ -26,6 +49,10 @@ names or messages can be misclassified during that conversion. Shared cents and
 the legacy auto-deal flag are also saved. The saved 2–7 bonus defaults to zero
 for older checkpoints. Cents defaults to false for older
 checkpoints; auto-deal always restores as true, regardless of its saved value.
+The decision-time limit defaults to 20 seconds in older checkpoints. Player Away
+flags and shared pause state are saved, defaulting to false. A paused table
+remains paused after recovery. Turn deadlines are transient because recovery
+refunds unfinished hands instead of resuming them.
 The pending auto-deal timer is transient and is recreated only when eligible
 players reconnect while no hand is running. The checkpoint remains bounded.
 
@@ -135,7 +162,7 @@ DynamoDB's default encryption at rest and HTTPS in transit.
 
 [export_history.py](../../backend/export_history.py) writes private JSON files for
 session discovery, session/hand history, system events, or player results. Player
-exports include lifetime and per-session net chips plus underlying records. Files
+exports include net chips and per-session totals for the selected environment plus underlying records. Legacy records affect totals only when explicitly included. Files
 are created exclusively with owner-only permissions. The CLI requires authorized
 AWS access; no public history endpoint exposes live cards. See the
 [README](../../README.md#exporting-history) for commands.
@@ -164,5 +191,7 @@ table or creating a replacement identity. Other players can continue playing.
 failures. [History tests](../../backend/tests/test_history.py) cover card/runout
 reconstruction, identity after pruning/restart, chip accounting, migration,
 archive privacy, pagination, SDK transaction serialization, and uncertain commits.
+[Activity tests](../../backend/tests/test_activity.py) check namespace isolation,
+production checkpoint compatibility, record labels, safe defaults and export filtering.
 They run without AWS access. See [operations](operations.md#storage-infrastructure)
 for infrastructure and [README](../../README.md#checks) for verification commands.

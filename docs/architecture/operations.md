@@ -43,7 +43,12 @@ Its credential is supplied only to the backend, independently of developer
 authentication. Browsers receive no AWS access. Authorized offline exports use
 separate access to query private history.
 
-Each environment needs its own tables and one backend writer. Local development
+Set `POKER_ENVIRONMENT=production` explicitly on the hosted game before deploying
+this version; otherwise the safe development default opens a separate game.
+Local previews default to development, and automated runners explicitly use test.
+Each environment needs one backend writer and should use its own physical tables.
+Environment-prefixed keys additionally isolate non-production checkpoints,
+identities, feedback and archive partitions when table names are shared. Local development
 uses memory-only mode or an isolated database emulator; running two backends
 against the same checkpoint would trigger the version guard and stop play.
 See [persistence](persistence.md) for recovery, migration, and failure behavior.
@@ -114,6 +119,11 @@ live table at the same viewport size. Mobile keyboard behavior requires physical
 
 The browser E2E runners extend the deal timer for deterministic seating and
 recovery scenarios and use the legacy start command at controlled boundaries.
+[Control tests](../../backend/tests/test_table_controls.py) verify automatic check/fold,
+stale timer cancellation, pause/resume across betting and runouts, Away eligibility,
+paused disconnect/removal, and checkpoint compatibility. Embedded-browser gameplay
+checks use separate loopback origins for player identities and drive visible
+controls against an isolated in-memory backend.
 [Settings tests](../../backend/tests/test_settings.py) verify automatic first and
 subsequent deals, queued rebuys that restore eligibility, restart refunds, and
 persistence-failure guards. [Seating tests](../../backend/e2e/seating_test.py)

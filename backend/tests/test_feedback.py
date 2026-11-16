@@ -34,7 +34,7 @@ class FeedbackTests(unittest.TestCase):
         self.assertEqual(record["reporter_name"], "Guest")
         self.assertEqual(record["reporter_type"], "guest")
         self.assertIsNone(record["player_id"])
-        self.assertEqual(record["pk"], "FEEDBACK")
+        self.assertEqual(record["pk"], "ENV#development#FEEDBACK")
         self.assertTrue(record["sk"].endswith(reply["id"]))
         self.assertIsNotNone(datetime.fromisoformat(record["created_at"]).tzinfo)
         self.assertEqual(self.server.table.players, [])

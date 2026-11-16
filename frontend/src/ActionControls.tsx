@@ -4,11 +4,12 @@ import { RevealControls } from "./RevealControls";
 import { FoldAction } from "./FoldAction";
 import type { State } from "./types";
 
-export type Action = { type: string; seat?: number; player_id?: string; amount?: number; text?: string; small_blind?: number; big_blind?: number; seven_deuce_bonus?: number; cents?: boolean; count?: number; hand_id?: string; hand_number?: number; cards?: number[] };
+export type Action = { type: string; paused?: boolean; away?: boolean; turn_seconds?: number; seat?: number; player_id?: string; amount?: number; text?: string; small_blind?: number; big_blind?: number; seven_deuce_bonus?: number; cents?: boolean; count?: number; hand_id?: string; hand_number?: number; cards?: number[] };
 
 export function ActionControls({ state, ready, send }: {
   state: State; ready: boolean; send: (action: Action) => void;
 }) {
+  ready = ready && !state.paused;
   const fmt = (value: number) => formatAmount(value, state.cents);
   const unit = state.cents ? 100 : 1;
   const me = state.players.find(p => p.id === state.you)!;
@@ -30,7 +31,7 @@ export function ActionControls({ state, ready, send }: {
   if (!myTurn) return null;
   return <section className={`action-controls ${state.running ? "is-playing" : ""} ${myTurn ? "is-your-turn" : ""}`} aria-label="Game controls">
     <div className="action-status" role="status">
-      {myTurn ? "Your turn" : `${state.players.find(p => p.id === state.actor)?.name || "Player"} to act`}
+      {state.paused ? "Game paused" : myTurn ? "Your turn" : `${state.players.find(p => p.id === state.actor)?.name || "Player"} to act`}
       <span>{!ready ? "Waiting for connection or update…" : myTurn ? state.call_amount ? `${fmt(state.call_amount)} to call${state.call_amount === me.stack ? " · all-in" : ""}` : "You can check" : "Actions unlock on your turn"}</span>
     </div>
     <div className="betting-controls">

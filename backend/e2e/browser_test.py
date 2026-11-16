@@ -151,6 +151,7 @@ def run(feedback_only=False):
         AWS_CONFIG_FILE=os.devnull,
         AWS_SHARED_CREDENTIALS_FILE=os.devnull,
         AWS_ENDPOINT_URL_DYNAMODB=f"http://127.0.0.1:{db_port}",
+        POKER_ENVIRONMENT="test",
         DYNAMODB_TABLE="e2e-game",
         DYNAMODB_HISTORY_TABLE="e2e-history",
         VITE_WS_URL=f"ws://127.0.0.1:{api_port}/ws",
@@ -253,7 +254,7 @@ def run(feedback_only=False):
                 player.get_by_role("textbox", name="Feedback", exact=True).fill("Player feedback")
                 player.get_by_role("button", name="Send feedback").click()
                 expect(player.get_by_text("Thanks! Your feedback has been saved.")).to_be_visible()
-                records = list(query_records(history, "FEEDBACK"))
+                records = list(query_records(history, "FEEDBACK", environment="test"))
                 assert len(records) == 2
                 assert records[0]["reporter_type"] == "guest"
                 assert records[1]["reporter_name"] == "Feedback player"
@@ -497,7 +498,7 @@ def run(feedback_only=False):
             check("Mobile chat controls work")
             # Cause a real conditional version conflict in the emulator.
             checkpoint.update_item(
-                Key={"pk": "GAME#GLOBAL"},
+                Key={"pk": "ENV#test#GAME#GLOBAL"},
                 UpdateExpression="SET #v = #v + :one",
                 ExpressionAttributeNames={"#v": "version"},
                 ExpressionAttributeValues={":one": 1},
@@ -517,12 +518,12 @@ def run(feedback_only=False):
             await_server(api + "/health", backend)
             ready(a)
             # Inspect persisted data using the production query/export implementations.
-            sessions = list(query_records(history, "SESSIONS"))
+            sessions = list(query_records(history, "SESSIONS", environment="test"))
             session_ids = {e["session_id"] for e in sessions}
             events = [
                 e
                 for sid in session_ids
-                for e in query_records(history, f"SESSION#{sid}")
+                for e in query_records(history, f"SESSION#{sid}", environment="test")
             ]
             completed = [e for e in events if e["type"] == "hand_completed"]
             cancelled = [e for e in events if e["type"] == "hand_cancelled"]
@@ -538,14 +539,14 @@ def run(feedback_only=False):
                 "Archived net results balance and exclude rebuys",
                 all(sum(e["net"].values()) == 0 for e in completed + cancelled),
             )
-            report = player_report(list(query_records(history, f"PLAYER#{aid}")))
+            report = player_report(list(query_records(history, f"PLAYER#{aid}", environment="test")))
             expected = sum(e["net"].get(aid, 0) for e in completed)
             check(
                 "Lifetime export matches underlying hand results",
                 report["net"] == expected and report["completed_hands"] == 2,
             )
             hand_id = completed[0]["hand_id"]
-            hand = list(query_records(history, f"HAND#{hand_id}"))
+            hand = list(query_records(history, f"HAND#{hand_id}", environment="test"))
             check(
                 "Hand query retains private cards, deck order and actions",
                 any(

@@ -9,6 +9,7 @@ from hashlib import sha256
 from uuid import uuid4
 
 from archive import archive_items, transaction_put
+from activity import activity_environment, partition_key
 
 import boto3
 from boto3.dynamodb.conditions import Attr
@@ -42,6 +43,8 @@ def snapshot(table):
             "big_blind": table.big_blind,
             "seven_deuce_bonus": table.seven_deuce_bonus,
             "auto_deal": table.auto_deal,
+            "turn_seconds": table.turn_seconds,
+            "paused": table.paused_at is not None,
             "cents": table.cents,
             "queued_settings": table.queued_settings,
             "queued_stacks": table.queued_stacks,
@@ -95,6 +98,10 @@ def restore(payload):
     else:
         table.history, table.chat_history = split_legacy_history(table.history, table.players)
     table.auto_deal = True  # Automatic dealing also applies to older checkpoints.
+    table.turn_seconds = data.get("turn_seconds", 20)
+    if data.get("paused", False):
+        from datetime import datetime, timezone
+        table.paused_at = datetime.now(timezone.utc).timestamp()
     table.cents = data.get("cents", False)
     table.seven_deuce_bonus = data.get("seven_deuce_bonus", 0)
     table.queued_settings = data.get("queued_settings")
@@ -152,14 +159,16 @@ def restore(payload):
 
 
 class DynamoStore:
-    def __init__(self, table, history_table=None):
+    def __init__(self, table, history_table=None, *, environment="development"):
+        self.environment = activity_environment(environment)
         self.table = table
         self.history_table = history_table
         self.version = 0
         self.last_payload = None
 
     @classmethod
-    def from_env(cls):
+    def from_env(cls, *, environment=None):
+        environment = activity_environment(environment)
         name = os.environ.get("DYNAMODB_TABLE")
         if not name:
             return None
@@ -177,10 +186,13 @@ class DynamoStore:
                 retries={"mode": "standard", "total_max_attempts": 3},
             ),
         )
-        return cls(resource.Table(name), resource.Table(history_name))
+        return cls(resource.Table(name), resource.Table(history_name), environment=environment)
+
+    def key(self, partition):
+        return partition_key(partition, self.environment)
 
     def load(self):
-        item = self.table.get_item(Key={"pk": "GAME#GLOBAL"}, ConsistentRead=True).get(
+        item = self.table.get_item(Key={"pk": self.key("GAME#GLOBAL")}, ConsistentRead=True).get(
             "Item"
         )
         if not item:
@@ -194,16 +206,17 @@ class DynamoStore:
             return None
         digest = sha256(token.encode()).hexdigest()
         return self.history_table.get_item(
-            Key={"pk": f"IDENTITY#{digest}", "sk": "PROFILE"}, ConsistentRead=True
+            Key={"pk": self.key(f"IDENTITY#{digest}"), "sk": "PROFILE"}, ConsistentRead=True
         ).get("Item")
 
     def save_feedback(self, record):
         if self.history_table is None:
             raise StorageError("Feedback storage is unavailable.")
         self.history_table.put_item(Item={
-            "pk": "FEEDBACK",
-            "sk": f"{record['created_at']}#{record['id']}",
             **record,
+            "pk": self.key("FEEDBACK"),
+            "sk": f"{record['created_at']}#{record['id']}",
+            "environment": self.environment,
         })
 
     def save(self, payload, events=(), profiles=None):
@@ -219,16 +232,18 @@ class DynamoStore:
         )
         # A timeout can mean a committed write. Stop the game on any failure;
         # restarting reloads the authoritative checkpoint, never blindly retries an action.
-        item = {"pk": "GAME#GLOBAL", "version": self.version + 1, "payload": compressed}
+        item = {"pk": self.key("GAME#GLOBAL"), "version": self.version + 1,
+                "payload": compressed, "environment": self.environment}
         if self.history_table is not None:
             writes = [transaction_put(self.table.name, item, condition)]
             writes.extend(
                 transaction_put(self.history_table.name, record)
-                for record in archive_items(events)
+                for record in archive_items(events, self.environment)
             )
             for digest, profile in (profiles or {}).items():
                 for pk in (f"IDENTITY#{digest}", f"PLAYER#{profile['player_id']}"):
-                    record = {"pk": pk, "sk": "PROFILE", **profile}
+                    record = {**profile, "pk": self.key(pk), "sk": "PROFILE",
+                              "environment": self.environment}
                     guard = Attr("pk").not_exists() | Attr("player_id").eq(
                         profile["player_id"]
                     )

@@ -62,7 +62,7 @@ class HistoryTests(unittest.TestCase):
         self.assertEqual(completed["net"][a.id], a.stack - 200)
         self.assertEqual(start["players"][0]["stack"], 200)
         items = list(archive_items(table.events))
-        report = player_report([r for r in items if r["pk"] == f"PLAYER#{a.id}"])
+        report = player_report([r for r in items if r["pk"] == f"ENV#development#PLAYER#{a.id}"])
         self.assertEqual(report["net"], a.stack - 200)
         self.assertEqual(report["completed_hands"], 1)
         self.assertNotIn(a.token, json.dumps(table.events))
@@ -182,7 +182,7 @@ class HistoryTests(unittest.TestCase):
         table.start(a.id)
         table.act(table.actor, "fold")
         records = [
-            r for r in archive_items(table.events) if r["pk"] == f"PLAYER#{a.id}"
+            r for r in archive_items(table.events) if r["pk"] == f"ENV#development#PLAYER#{a.id}"
         ]
         report = player_report(
             [decode(r["payload"]) if "payload" in r else r for r in records]
@@ -272,9 +272,9 @@ class DynamoHistoryTests(unittest.TestCase):
         table.join("A")
         store.save(snapshot(table), table.events, table.profiles)
         writes = db.meta.client.transact_write_items.call_args.kwargs["TransactItems"]
-        self.assertEqual(writes[0]["Put"]["Item"]["pk"], "GAME#GLOBAL")
+        self.assertEqual(writes[0]["Put"]["Item"]["pk"], "ENV#development#GAME#GLOBAL")
         self.assertTrue(
-            any(w["Put"]["Item"]["pk"].startswith("IDENTITY#") for w in writes)
+            any(w["Put"]["Item"]["pk"].startswith("ENV#development#IDENTITY#") for w in writes)
         )
         self.assertTrue(all("ConditionExpression" in w["Put"] for w in writes))
         first_payload = store.last_payload

@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+from activity import ENVIRONMENTS
 from archive import query_records
 from storage import DynamoStore, StorageError
 
@@ -41,6 +42,10 @@ def main():
     group.add_argument("--session")
     group.add_argument("--hand")
     group.add_argument("--player")
+    parser.add_argument("--environment", choices=ENVIRONMENTS,
+                        help="Select activity; defaults to POKER_ENVIRONMENT or development")
+    parser.add_argument("--include-legacy", action="store_true",
+                        help="Include unclassified old records (production only)")
     parser.add_argument(
         "--output",
         type=Path,
@@ -49,7 +54,7 @@ def main():
     )
     args = parser.parse_args()
     load_dotenv(Path(__file__).with_name(".env"))
-    store = DynamoStore.from_env()
+    store = DynamoStore.from_env(environment=args.environment)
     if store is None:
         raise StorageError("Configure DynamoDB to export permanent history.")
     partition = (
@@ -65,8 +70,13 @@ def main():
         if args.hand
         else f"PLAYER#{args.player}"
     )
-    records = list(query_records(store.history_table, partition))
+    records = list(query_records(store.history_table, partition,
+                                environment=store.environment,
+                                include_legacy=args.include_legacy))
     result = player_report(records) if args.player else records
+    if args.player:
+        result["environment"] = store.environment
+        result["includes_legacy"] = args.include_legacy
     # Exclusive creation and owner-only permissions protect private cards in exports.
     fd = os.open(args.output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as output:

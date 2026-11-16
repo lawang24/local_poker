@@ -4,6 +4,7 @@ export type Player = {
   seat: number;
   stack: number;
   connected: boolean;
+  away: boolean;
   in_hand: boolean;
   folded: boolean;
   committed: number;
@@ -18,12 +19,16 @@ export type LedgerRow = {
   sessions: LedgerSession[];
 };
 export type TableSettings = {
+  turn_seconds: number;
   small_blind: number;
   big_blind: number;
   seven_deuce_bonus: number;
   cents: boolean;
 };
 export type State = TableSettings & {
+  paused: boolean;
+  paused_at: number | null;
+  turn_deadline: number | null;
   players: Player[];
   ledger: LedgerRow[];
   you: string;

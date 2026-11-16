@@ -909,3 +909,9 @@ button.nameplate:hover, button.nameplate:focus-visible { border-color: #ddd; }
   .app-table .bet-left { left: calc(14% + min(54px, 14cqw) + 4px) !important; transform: translateY(-50%); }
   .app-table .bet-right { left: calc(86% - min(54px, 14cqw) - 4px) !important; transform: translate(-100%, -50%); }
 }
+
+/* Shared game controls stay alongside Options at both table sizes. */
+.toolbar-icon[aria-pressed="true"] { color: #f1c65d; }
+.turn-timer { position: absolute; top: 100%; right: 0; z-index: 4; min-width: 48px; padding: 2px 5px 5px; border-radius: 0 0 3px 3px; background: #252525; color: #fff; font-size: 11px; line-height: 14px; text-align: center; font-variant-numeric: tabular-nums; }
+.turn-timer::after { content: ""; position: absolute; bottom: 0; left: 0; width: var(--time-left); height: 3px; background: #65cb88; }
+.turn-timer.is-urgent::after { background: #f0ac54; }

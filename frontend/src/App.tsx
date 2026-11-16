@@ -163,6 +163,9 @@ export default function App() {
   return (
     <main className={`app ${joined && state && !settingsOpen ? "app-table" : ""}`}>
       {joined && state ? <TableToolbar name={me?.name || name} status={status}
+        paused={state.paused} away={!!me?.away} ready={ready}
+        pause={() => send({ type: "pause", paused: !state.paused })}
+        toggleAway={() => send({ type: "away", away: !me?.away })}
         blinds={`${formatAmount(state.small_blind, state.cents)} / ${formatAmount(state.big_blind, state.cents)}`} settingsOpen={settingsOpen} openLog={openLog} chatButton={chatButton} openChat={() => chatDialog.current?.showModal()}
         settings={() => setSettingsOpen(!settingsOpen)} leave={() => {
           setSettingsOpen(false); setJoined(false); setState(null); setStatus("Offline");
@@ -256,7 +259,7 @@ export default function App() {
         status === "Unable to join" || status === "Seat opened elsewhere" ? null :
           <ConnectionProgress loadingTable={status === "Loading table"} />
       ) : settingsOpen ? (
-        <Settings key={`${settings?.small_blind}:${settings?.big_blind}:${settings?.seven_deuce_bonus}:${settings?.cents}`} state={state} ready={ready} send={send} back={() => setSettingsOpen(false)} />
+        <Settings key={`${settings?.small_blind}:${settings?.big_blind}:${settings?.seven_deuce_bonus}:${settings?.cents}:${settings?.turn_seconds}`} state={state} ready={ready} send={send} back={() => setSettingsOpen(false)} />
       ) : (
         <>
           <div className="game-layout">

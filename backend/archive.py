@@ -3,6 +3,7 @@
 import json
 import zlib
 from boto3.dynamodb.conditions import Attr, ConditionExpressionBuilder, Key
+from activity import activity_environment, partition_key
 
 
 def encode(value):
@@ -34,7 +35,15 @@ def expression(condition, key=False):
     return result
 
 
-def archive_items(events):
+def archive_items(events, environment="development"):
+    environment = activity_environment(environment)
+    events = ({**event, "environment": environment} for event in events)
+    for item in _archive_items(events):
+        yield {**item, "pk": partition_key(item["pk"], environment),
+               "environment": environment}
+
+
+def _archive_items(events):
     for event in events:
         sequence = f"{event['sequence']:020d}"
         session_id, hand_id = event["session_id"], event["hand_id"]
@@ -88,8 +97,11 @@ def transaction_put(table_name, item, condition=None):
     }
 
 
-def query_records(table, partition, prefix=None):
-    condition = Key("pk").eq(partition)
+def query_records(table, partition, prefix=None, *, environment="development", include_legacy=False):
+    environment = activity_environment(environment)
+    if include_legacy and environment != "production":
+        raise ValueError("Legacy history is only available in the production namespace.")
+    condition = Key("pk").eq(partition_key(partition, environment))
     if prefix:
         condition &= Key("sk").begins_with(prefix)
     pages = table.meta.client.get_paginator("query").paginate(
@@ -97,4 +109,7 @@ def query_records(table, partition, prefix=None):
     )
     for page in pages:
         for item in page.get("Items", []):
-            yield decode(item["payload"]) if "payload" in item else item
+            record = decode(item["payload"]) if "payload" in item else dict(item)
+            label = item.get("environment", "legacy")
+            if label == environment or (include_legacy and label == "legacy"):
+                yield {**record, "environment": label}

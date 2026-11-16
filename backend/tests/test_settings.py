@@ -43,7 +43,7 @@ class SettingsTests(unittest.TestCase):
             self.table.set_settings(self.a.id, 70, 40, None, True)
         state = self.table.state(self.b.id)
         self.assertEqual(state["queued_settings"], {
-            "small_blind": 20, "big_blind": 40, "seven_deuce_bonus": 75, "cents": True,
+            "small_blind": 20, "big_blind": 40, "seven_deuce_bonus": 75, "cents": True, "turn_seconds": 20,
         })
         self.assertEqual((state["small_blind"], state["big_blind"], state["cents"]), (5, 10, False))
         self.table.set_settings(self.a.id, 5, 10, None, False, 0)

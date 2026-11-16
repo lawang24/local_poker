@@ -47,7 +47,7 @@ Pot awards, bonus transfers, net history and queued edits still settle in their
 existing order; the snapshot does not delay or alter chip ownership.
 The result stays visible for 6.1 seconds after one all-in run, or 8.1 seconds
 after two. Ordinary results and the first hand use five seconds. The next deal
-requires at least two connected players with chips; otherwise the table waits.
+requires an unpaused table and at least two connected, non-away players with chips; otherwise the table waits.
 
 [runout.py](../../backend/runout.py) defines the reveal schedule measured from the
 supplied once/twice recordings. After consent, the hand remains running with no
@@ -78,7 +78,8 @@ Seat numbers are checkpointed; older checkpoints derive them from list order.
 Moves emit `seat_changed` events, and kicks attribute `seat_removed` to the requester.
 Any connected player can change the shared lobby settings:
 positive integer-unit blinds (SB ≤ BB ≤ 1,000,000), cents mode, and the per-opponent
-2–7 offsuit bonus (0–1,000,000 units, default 0). Between hands, stack and settings edits take effect immediately. Automatic dealing is always enabled.
+2–7 offsuit bonus (0–1,000,000 units, default 0), and decision time
+(0–600 whole seconds, default 20; zero disables it). Between hands, stack and settings edits take effect immediately. Automatic dealing is enabled whenever the table is not paused.
 Cents mode denominates each integer unit as 0.01 instead of 1 for everyone;
 switching modes preserves underlying chip balances. The default denomination is whole chips. Settings are checkpointed with backward-compatible defaults and
 emit a `settings_changed` archive event. Chat and game activity each retain their latest 100 entries independently. Chat records the sender’s display name at send time.
@@ -117,6 +118,25 @@ for recovery; the entire accumulated archive is never loaded into the engine.
 [DeckOfCards](../../backend/deck_of_cards.py) creates, shuffles, and draws from a
 52-card deck. The engine uses `phevaluator` to rank hands at showdown; the
 package is declared in [requirements.txt](../../backend/requirements.txt).
+
+## Availability and shared pause
+
+Any connected seat can pause or resume play. Betting and runout votes reject
+commands while paused; the connection layer cancels timed advancement until
+resume. Turn deadlines and runout timestamps shift so a pause consumes no decision
+time. Away is separate from connectivity: it preserves the seat, stack, and
+session while skipping future deals, blinds and dealer rotation. If a dealt
+player goes away, their remaining turns check when free and otherwise fold;
+all-in eligibility survives and runout consent defaults to one run. Returning
+restores future eligibility without redealing cards mid-hand. Timeout actions
+use the same check-or-fold rule and record their reason in private action history.
+A timeout alone does not set Away.
+
+Pause state, Away flags and the decision-time setting are checkpointed with
+backward-compatible defaults. Recovery still cancels/refunds unfinished hands;
+it does not restore an interrupted decision timer. A paused checkpoint remains
+paused after restart. [Control tests](../../backend/tests/test_table_controls.py)
+cover deadlines, stale tasks, pause, availability and recovery.
 
 ## Player privacy
 

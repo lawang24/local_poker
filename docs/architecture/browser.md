@@ -50,7 +50,7 @@ focus to the opener. Closing without sending preserves the draft. A live chat
 appears at its sender’s seat for six seconds; another message from the same player
 replaces it. Long messages are abbreviated in the bubble and remain complete in chat.
 [TableToolbar.tsx](../../frontend/src/TableToolbar.tsx) owns a compact Options button,
-connection indicator, and Feedback in the top-right corner. Options opens a native
+Away / I’m back and Pause / Resume controls, a connection indicator, and Feedback in the top-right corner. Options opens a native
 modal containing Settings, Invite, Leave, and expandable table instructions. The
 modal supports Escape and native focus management. The desktop frame places the larrypokernow name above Options and the game type and
 blinds in the opposite corner. Hand and street information stays with the board.
@@ -82,8 +82,13 @@ an explicit confirmation sends the raise. Cancel or Escape returns to the action
 row. Pot raises include the call and then a fraction of the pot after calling;
 presets are clamped to server limits, including short all-in raises. Opening bets
 are labelled Bet, while the wire command remains `raise`. The draft resets when the hand, street, actor,
-target, or maximum changes. Buttons disable while an action is pending or the
-connection is unavailable. The action row stays in place behind the dialog.
+target, or maximum changes. Buttons disable while an action is pending, the game is paused, or the
+connection is unavailable. [TurnTimer.tsx](../../frontend/src/TurnTimer.tsx) displays
+a countdown and remaining-time bar at the acting seat, using the server deadline
+and a monotonic local elapsed clock. The frozen server pause time keeps it steady
+during pauses. Expiry never sends a client action. Away seats are labelled Away;
+the central caption identifies a paused game. The shared Settings form accepts
+1–600 decision seconds, with blank or zero disabling the timer. The action row stays in place behind the dialog.
 [FoldAction.tsx](../../frontend/src/FoldAction.tsx) asks for confirmation when Fold
 is selected with nothing to call, including the big blind's option. Its white modal,
 wording, session checkbox, and red Cancel / green Confirm buttons follow the supplied
@@ -156,8 +161,8 @@ its trailing `/ws`) and does not join a seat or interrupt the game connection.
 
 [Settings.tsx](../../frontend/src/Settings.tsx) is a dedicated page opened from the
 Options menu without dropping the connection. Any connected player can save shared
-small/big blinds, cents mode, and the 2–7 bonus per opponent. Zero disables the
-bonus. Dealing is always automatic, including the first hand;
+small/big blinds, cents mode, the 2–7 bonus per opponent, and the turn timer. Zero disables the
+bonus; blank or zero disables the timer. Dealing is automatic while unpaused, including the first hand;
 there is no manual deal button or auto-deal toggle. The server snapshot is authoritative;
 there is no browser-local settings preference. During play, Settings displays the current hand’s values and any accepted
 replacement for the next hand. New shared settings reset open drafts, and leaving the page discards unsaved changes.

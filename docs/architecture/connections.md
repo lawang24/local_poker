@@ -16,7 +16,7 @@ The implementation lives in [main.py](../../backend/main.py).
    containing the stable player ID and token, then sends
    each connected player a `state` message with their own complete table view.
 3. Any connected player can deal when at least two
-   connected players have chips. New players joining during a hand wait for the
+   connected, non-away players have chips and the game is not paused. New players joining during a hand wait for the
    next one.
 4. The browser sends commands such as `fold`, `check_call`, or `raise`. A raise's
    `amount` is the total commitment for the current betting street. `start`,
@@ -44,7 +44,9 @@ All messages are JSON text over `/ws`. Clients join before sending game commands
 | Client → server | `runout` | `count` is integer 1 or 2; `hand_id` must match the pending offer. Only connected contenders may vote, once per hand. |
 | Client → server | `reveal_cards` | `hand_number` identifies the completed hand. `cards` lists one or both distinct zero-based positions in the sender’s own hand. Repeating a reveal leaves it public. |
 | Client → server | `set_stack` | `amount` requests the player’s total balance. During a hand it replaces their queued total. |
-| Client → server | `settings` | Any joined player sets integer `small_blind`, `big_blind`, boolean `cents`, and optional integer `seven_deuce_bonus` (0–1,000,000). During play the request replaces the queued settings. Omitting the bonus retains the queued bonus if present, otherwise the active one. Legacy `auto_deal` is optional and cannot disable dealing. |
+| Client → server | `pause` | Boolean `paused`; any joined player can pause or resume shared play. |
+| Client → server | `away` | Boolean `away`; change only the authenticated player’s availability while keeping their seat. |
+| Client → server | `settings` | Any joined player sets integer `small_blind`, `big_blind`, boolean `cents`, optional integer `seven_deuce_bonus` (0–1,000,000), and optional integer `turn_seconds` (0–600; zero disables the timer). During play the request replaces the queued settings. Omitted bonus/timer fields retain the queued value if present, otherwise the active one. Legacy `auto_deal` is optional and cannot disable dealing. |
 | Client → server | `move_seat` | `seat` is an integer 0–8; move to an empty seat between hands. |
 | Client → server | `kick` | `player_id` identifies another player to remove between hands. |
 | Client → server | `chat` | `text` contains 1–300 characters after trimming. |
@@ -63,10 +65,10 @@ the same lock as betting. Kicks save the removal before detaching and closing th
 target socket with `4002`, then broadcast the remaining table. A stale socket
 cannot send further commands or disconnect a replacement in its cleanup.
 
-Snapshots include shared `small_blind`, `big_blind`, `cents`, `seven_deuce_bonus`, and a legacy
+Snapshots include shared `small_blind`, `big_blind`, `cents`, `seven_deuce_bonus`, `turn_seconds`, and a legacy
 `auto_deal` field that is always true.
 The nullable `queued_stack` is visible only to its owner. All players receive
-`queued_settings` with the four proposed settings, or null. Rejoining a retained
+`queued_settings` with the five proposed settings, or null. Rejoining a retained
 seat restores these values from the server. Both queues clear at settlement.
 New completed results include `cents` so payout displays retain the hand’s denomination.
 `result.stacks_before_payout` maps public player IDs to their balances immediately
@@ -78,7 +80,8 @@ Settings requests validate all fields before mutation, and use the same lock,
 checkpoint, and broadcast path as game actions.
 
 The server owns one cancellable deal task whenever no hand is running
-and at least two connected players have chips, including before the first hand.
+and at least two connected, non-away players have chips, including before the first hand.
+Pausing cancels this task; resuming starts a fresh full result hold.
 It waits five seconds normally, or the completed all-in result’s 6.1/8.1-second
 `runout_presentation.result_hold`.
 Ordinary broadcasts do not reset the delay. Starting a hand through the legacy
@@ -99,8 +102,7 @@ interrupt it. Replacement connections retain votes and the original deadline.
 During the reveal sequence, nullable `runout` carries the hand ID, run count,
 active run index, public `hands`, `boards` (null slots for unrevealed faces),
 per-slot `backs_at` and `revealed_at` UTC epoch seconds, `started_at`, current
-`phase`, and public-card `equities`. `server_time` is sampled when building an
-active runout snapshot; it is zero outside that phase. Clients use those times
+`phase`, and public-card `equities`. `server_time` is sampled for every snapshot, including ordinary turns. Clients use those times
 for animation progress without deciding when to reveal cards or settle chips.
 The legacy `board` contains only exposed faces of run one. Hand labels use only
 exposed faces, and skip incomplete flops.
@@ -125,8 +127,31 @@ text. This field triggers the live seat bubble; ordinary updates, repairs and
 reconnects do not replay it. Snapshots carry the rolling transcript in `state.chat_history` as ordered `{name, text}` entries. The session log reads game activity from `state.history`. Private
 feedback never enters this path.
 
+## Turn timing and pause
+
+The server reconciles Away actions before checkpointing each broadcast, then
+synchronizes a decision key (hand, street, actor). A new key starts a fresh
+`turn_deadline` in UTC epoch seconds when `turn_seconds` is nonzero. Unrelated
+broadcasts and reconnects preserve the deadline. One cancellable task checks
+its key under the game lock before checking for free or folding with reason
+`timeout`; Away uses the same action rules with reason `away`. No timeout calls a bet.
+All-in and folded players never own a decision timer. A new turn, shutdown, or
+storage failure cancels the old task. Clients only display the countdown.
+
+Snapshots include `paused`, nullable `paused_at`, and nullable `turn_deadline`.
+Pause rejects betting, new deals and runout votes, cancels scheduled advancement,
+and freezes the current remaining time. Resume shifts turn/vote deadlines and
+runout presentation timestamps by the pause duration. Disconnects while paused
+are recorded immediately, but their hand effects wait until resume (and are
+skipped if the player has reconnected). Chat, settings, and availability remain
+usable during a pause. Away contenders resolve runout choices to one run without
+losing all-in eligibility. The same save-before-broadcast boundary covers these controls.
+
 ## Seat lifecycle
 
+Each public player includes `away`. Away seats stay connected and keep their chips,
+but are excluded from future deals and dealer/blind rotation. Returning during a
+hand does not deal cards retroactively or undo a fold.
 A disconnected player with chips folds while betting is open. An all-in player
 remains eligible for the pot. Once a runout choice is pending, disconnecting any
 contender resolves to one run without folding them, including a covering player. Reconnection does not undo a fold. Seats are retained during

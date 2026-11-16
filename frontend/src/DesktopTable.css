@@ -208,3 +208,8 @@
   .new-message { display: grid; place-items: center; width: 4.2cqw; padding: .6cqw; background: #373537; }
   .new-message svg { width: 100%; fill: none; stroke: currentColor; stroke-width: 2; }
 }
+
+@media (min-width: 1024px), (min-width: 601px) and (max-height: 500px) {
+  .app-table .table-toolbar .away-toggle { left: 6.7cqw; }
+  .app-table .table-toolbar .pause-toggle { left: 12.5cqw; }
+}

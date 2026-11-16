@@ -23,7 +23,7 @@ async def lifespan(app):
     try:
         yield
     finally:
-        tasks = [task for task in (server.deal_task, server.runout_task, server.reveal_task) if task]
+        tasks = [task for task in (server.deal_task, server.runout_task, server.reveal_task, server.turn_task) if task]
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
@@ -44,8 +44,40 @@ class GameServer:
     runout_task: asyncio.Task | None = None
     reveal_task: asyncio.Task | None = None
 
+    turn_task: asyncio.Task | None = None
+    turn_key: tuple | None = None
+
+    def prepare_turn(self):
+        if self.table.paused_at is None and not self.failed:
+            while self.table.actor and self.table.player(self.table.actor).away:
+                self.table.automatic_action("away")
+            vote = self.table.runout_vote
+            if vote and any(self.table.player(pid).away for pid in vote["eligible"]):
+                self.table.resolve_runouts(1, "away")
+        self.table.sync_turn()
+
+    def schedule_turn(self):
+        t = self.table
+        key = (t._turn_key, t.turn_deadline) if not self.failed and t.paused_at is None and t.turn_deadline else None
+        if key == self.turn_key:
+            return
+        if self.turn_task and self.turn_task is not asyncio.current_task():
+            self.turn_task.cancel()
+        self.turn_key = key
+        self.turn_task = asyncio.create_task(self.expire_turn(key)) if key else None
+
+    async def expire_turn(self, key):
+        try:
+            await asyncio.sleep(max(0, key[1] - datetime.now(timezone.utc).timestamp()))
+            async with self.lock:
+                if not self.failed and self.table.paused_at is None and key == self.turn_key:
+                    self.table.automatic_action("timeout")
+                    await self.broadcast()
+        except StorageError:
+            pass
+
     def schedule_reveals(self):
-        if self.failed or not self.table.runout:
+        if self.failed or self.table.paused_at is not None or not self.table.runout:
             if self.reveal_task and self.reveal_task is not asyncio.current_task():
                 self.reveal_task.cancel()
                 self.reveal_task = None
@@ -58,7 +90,7 @@ class GameServer:
                 deadline = run["started_at"] + self.table._runout_steps[0]["at"]
                 await asyncio.sleep(max(0, deadline - datetime.now(timezone.utc).timestamp()))
                 async with self.lock:
-                    if self.failed or self.table.runout is not run:
+                    if self.failed or self.table.paused_at is not None or self.table.runout is not run:
                         break
                     self.table.advance_runout()
                     await self.broadcast()
@@ -70,7 +102,7 @@ class GameServer:
 
     def schedule_runout(self):
         vote = self.table.runout_vote
-        if self.failed or not vote:
+        if self.failed or self.table.paused_at is not None or not vote:
             if self.runout_task:
                 self.runout_task.cancel()
                 self.runout_task = None
@@ -83,15 +115,15 @@ class GameServer:
             await asyncio.sleep(max(0, (deadline - datetime.now(timezone.utc)).total_seconds()))
             async with self.lock:
                 self.runout_task = None
-                if not self.failed and self.table.runout_vote is vote:
+                if not self.failed and self.table.paused_at is None and self.table.runout_vote is vote:
                     self.table.resolve_runouts(1, "timeout")
                     await self.broadcast()
         except StorageError:
             pass
 
     def can_auto_deal(self):
-        return (not self.failed and not self.table.running
-                and sum(p.connected and p.stack > 0 for p in self.table.players) >= 2)
+        return (not self.failed and self.table.paused_at is None and not self.table.running
+                and sum(p.connected and not p.away and p.stack > 0 for p in self.table.players) >= 2)
 
     def schedule_deal(self):
         if not self.can_auto_deal():
@@ -126,6 +158,7 @@ class GameServer:
                 )
             except Exception as exc:
                 self.failed = True
+                self.schedule_turn()
                 self.schedule_runout()
                 self.schedule_reveals()
                 self.schedule_deal()
@@ -168,6 +201,7 @@ class GameServer:
             pass
 
     async def broadcast(self, chat=None):
+        self.prepare_turn()
         await self.checkpoint()
 
         async def send(pid, socket):
@@ -199,8 +233,10 @@ class GameServer:
                     del self.sockets[pid]
                     self.table.disconnect(pid)
             await asyncio.gather(*(self.close(socket) for _, socket in failures))
+            self.prepare_turn()
             await self.checkpoint()
 
+        self.schedule_turn()
         self.schedule_deal()
         self.schedule_runout()
         self.schedule_reveals()
@@ -275,11 +311,16 @@ async def websocket_endpoint(websocket: WebSocket):
                     elif kind == "runout":
                         server.table.choose_runouts(player.id, data.get("count"),
                                                     data.get("hand_id"))
+                    elif kind == "pause":
+                        server.table.set_paused(player.id, data.get("paused"))
+                    elif kind == "away":
+                        server.table.set_away(player.id, data.get("away"))
                     elif kind == "settings":
                         server.table.set_settings(
                             player.id, data.get("small_blind"), data.get("big_blind"),
                             data.get("auto_deal"), data.get("cents"),
                             data.get("seven_deuce_bonus", UNCHANGED),
+                            data.get("turn_seconds", UNCHANGED),
                         )
                     elif kind == "move_seat":
                         server.table.move_seat(player.id, data.get("seat"))

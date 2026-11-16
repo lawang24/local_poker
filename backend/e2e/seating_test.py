@@ -15,7 +15,7 @@ OUT.mkdir(parents=True, exist_ok=True)
 
 def run():
     # Freeze hand boundaries for seating checks; timer behavior has separate tests.
-    env = {**os.environ, "DYNAMODB_TABLE": "", "DYNAMODB_HISTORY_TABLE": "",
+    env = {**os.environ, "POKER_ENVIRONMENT": "test", "DYNAMODB_TABLE": "", "DYNAMODB_HISTORY_TABLE": "",
            "VITE_WS_URL": "ws://127.0.0.1:18800/ws"}
     processes = []
     logs = []

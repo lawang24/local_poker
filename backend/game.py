@@ -51,6 +51,7 @@ class Player:
     seat: int = 0
     stack: int = 1000
     connected: bool = True
+    away: bool = False
     hand: list = field(default_factory=list)
     in_hand: bool = False
     folded: bool = False
@@ -75,6 +76,11 @@ class Table:
         self.big_blind = 10
         self.seven_deuce_bonus = 0
         self.auto_deal = True
+        self.turn_seconds = 20
+        self.paused_at = None
+        self.turn_deadline = None
+        self._turn_key = None
+        self._paused_disconnects = set()
         self.cents = False
         self.queued_stacks = {}
         self.queued_settings = None
@@ -305,9 +311,11 @@ class Table:
     def start(self, player_id):
         if not any(p.id == player_id and p.connected for p in self.players):
             raise InvalidAction("Join the table before dealing a hand.")
+        if self.paused_at is not None:
+            raise InvalidAction("Resume the game before dealing.")
         if self.running:
             raise InvalidAction("Finish the current hand before dealing again.")
-        eligible = {p.id for p in self.players if p.connected and p.stack > 0}
+        eligible = {p.id for p in self.players if p.connected and not p.away and p.stack > 0}
         if len(eligible) < 2:
             raise InvalidAction("At least two connected players with chips are needed.")
         self.hand_id = uuid4().hex
@@ -366,7 +374,9 @@ class Table:
     def can_raise(self, p):
         return p.acted_at is None or self.target - p.acted_at >= self.min_raise
 
-    def act(self, player_id, action, amount=None):
+    def act(self, player_id, action, amount=None, reason=None):
+        if self.paused_at is not None:
+            raise InvalidAction("The game is paused.")
         if not self.running or player_id != self.actor:
             raise InvalidAction("Wait for your turn.")
         p = self.player(player_id)
@@ -426,6 +436,7 @@ class Table:
             "action",
             player_id=p.id,
             action=action,
+            **({"reason": reason} if reason else {}),
             amount=before - p.stack,
             raise_to=amount if action == "raise" else None,
             committed=p.committed,
@@ -495,6 +506,8 @@ class Table:
             self.resolve_runouts(1, "disconnect")
 
     def choose_runouts(self, player_id, count, hand_id):
+        if self.paused_at is not None:
+            raise InvalidAction("The game is paused.")
         vote = self.runout_vote
         if not vote or hand_id != self.hand_id:
             raise InvalidAction("That runout choice has expired.")
@@ -802,6 +815,11 @@ class Table:
         p = self.player(player_id)
         p.connected = False
         self.record("player_disconnected", player_id=p.id)
+        if self.paused_at is not None:
+            self._paused_disconnects.add(player_id)
+            if not any(q.connected for q in self.players):
+                self.end_session("table_empty")
+            return
         if self.runout_vote and player_id in self.runout_vote["eligible"]:
             # Betting is closed, including for a covering player with chips left.
             # Keep their pot eligibility and resolve the choice conservatively.
@@ -828,7 +846,57 @@ class Table:
         if not any(p.connected for p in self.players):
             self.end_session("table_empty")
 
-    def set_settings(self, player_id, small_blind, big_blind, auto_deal, cents, seven_deuce_bonus=UNCHANGED):
+    def sync_turn(self):
+        """Refresh only on a new decision, never for chat or reconnect broadcasts."""
+        key = (self.hand_number, self.street, self.actor) if self.running and self.actor else None
+        if key != self._turn_key:
+            self._turn_key = key
+            now = self.paused_at if self.paused_at is not None else datetime.now(timezone.utc).timestamp()
+            self.turn_deadline = now + self.turn_seconds if key and self.turn_seconds else None
+
+    def automatic_action(self, reason):
+        p = self.player(self.actor)
+        self.act(p.id, "check_call" if p.committed >= self.target else "fold", reason=reason)
+
+    def set_away(self, player_id, away):
+        if type(away) is not bool:
+            raise InvalidAction("Away must be true or false.")
+        p = self.player(player_id)
+        if p.away != away:
+            p.away = away
+            self.record("away_changed", player_id=player_id, away=away)
+            self.log(f"{p.name} is {'away' if away else 'back'}.")
+
+    def set_paused(self, player_id, paused):
+        if type(paused) is not bool:
+            raise InvalidAction("Paused must be true or false.")
+        if paused == (self.paused_at is not None):
+            return
+        now = datetime.now(timezone.utc).timestamp()
+        if paused:
+            self.sync_turn()
+            self.paused_at = now
+        else:
+            elapsed = now - self.paused_at
+            if self.turn_deadline is not None:
+                self.turn_deadline += elapsed
+            if self.runout_vote:
+                deadline = datetime.fromisoformat(self.runout_vote["deadline"])
+                self.runout_vote["deadline"] = (deadline + timedelta(seconds=elapsed)).isoformat()
+            if self.runout:
+                self.runout["started_at"] += elapsed
+                for key in ("backs_at", "revealed_at"):
+                    self.runout[key] = [[value + elapsed if value is not None else None for value in row]
+                                        for row in self.runout[key]]
+            self.paused_at = None
+            disconnected, self._paused_disconnects = self._paused_disconnects, set()
+            for player in self.players:
+                if player.id in disconnected and not player.connected:
+                    self.disconnect(player.id)
+        self.record("pause_changed", player_id=player_id, paused=paused)
+        self.log(f"{self.player(player_id).name} {'paused' if paused else 'resumed'} the game.")
+
+    def set_settings(self, player_id, small_blind, big_blind, auto_deal, cents, seven_deuce_bonus=UNCHANGED, turn_seconds=UNCHANGED):
         if not self.player(player_id).connected:
             raise InvalidAction("Join the table before changing settings.")
         sb, bb = chips(small_blind), chips(big_blind)
@@ -843,7 +911,11 @@ class Table:
         # Accept the optional legacy field, but it no longer controls dealing.
         if auto_deal is not None and type(auto_deal) is not bool:
             raise InvalidAction("Auto-deal must be true or false.")
-        values = dict(small_blind=sb, big_blind=bb, cents=cents, seven_deuce_bonus=bonus)
+        seconds = ((self.queued_settings or {}).get("turn_seconds", self.turn_seconds)
+                   if turn_seconds is UNCHANGED else turn_seconds)
+        if type(seconds) is not int or not 0 <= seconds <= 600:
+            raise InvalidAction("Decision time must be 0–600 whole seconds (0 means no limit).")
+        values = dict(small_blind=sb, big_blind=bb, cents=cents, seven_deuce_bonus=bonus, turn_seconds=seconds)
         if self.running:
             changed = any(getattr(self, key) != value for key, value in values.items())
             self.queued_settings = dict(player_id=player_id, **values) if changed else None
@@ -851,13 +923,14 @@ class Table:
         else:
             self.apply_settings(player_id, **values)
 
-    def apply_settings(self, player_id, small_blind, big_blind, cents, seven_deuce_bonus):
+    def apply_settings(self, player_id, small_blind, big_blind, cents, seven_deuce_bonus, turn_seconds=20):
         self.small_blind, self.big_blind = small_blind, big_blind
         self.cents = cents
         self.seven_deuce_bonus = seven_deuce_bonus
+        self.turn_seconds = turn_seconds
         self.record("settings_changed", player_id=player_id,
                     small_blind=small_blind, big_blind=big_blind, auto_deal=True,
-                    cents=cents, seven_deuce_bonus=seven_deuce_bonus)
+                    cents=cents, seven_deuce_bonus=seven_deuce_bonus, turn_seconds=turn_seconds)
 
     def set_stack(self, player_id, amount):
         amount = chips(amount)
@@ -917,6 +990,7 @@ class Table:
                     "seat": q.seat,
                     "stack": q.stack,
                     "connected": q.connected,
+                    "away": q.away,
                     "in_hand": q.in_hand,
                     "folded": q.folded,
                     "committed": q.committed,
@@ -942,6 +1016,10 @@ class Table:
             "small_blind": self.small_blind,
             "big_blind": self.big_blind,
             "auto_deal": self.auto_deal,
+            "turn_seconds": self.turn_seconds,
+            "turn_deadline": self.turn_deadline,
+            "paused": self.paused_at is not None,
+            "paused_at": self.paused_at,
             "seven_deuce_bonus": self.seven_deuce_bonus,
             "cents": self.cents,
             "min_raise_to": self.target + self.min_raise,
@@ -951,7 +1029,7 @@ class Table:
             "result": self.result,
             "runout_vote": deepcopy(self.runout_vote),
             "runout": deepcopy(self.runout),
-            "server_time": datetime.now(timezone.utc).timestamp() if self.runout else 0,
+            "server_time": datetime.now(timezone.utc).timestamp(),
             "history": self.history,
             "chat_history": self.chat_history,
             "hand_number": self.hand_number,

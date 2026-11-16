@@ -143,7 +143,10 @@ class PokerTests(unittest.TestCase):
         for value in [-1, 5, 11, 101, 1.5, True, "20", None]:
             with self.assertRaises(InvalidAction):
                 t.act(t.actor, "raise", value)
-            self.assertEqual(before, t.state(t.actor))
+            after = t.state(t.actor)
+            before.pop("server_time", None)
+            after.pop("server_time", None)
+            self.assertEqual(before, after)
 
     def test_folded_player_never_gets_turn_again(self):
         t = self.table((200,) * 4)

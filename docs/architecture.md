@@ -7,7 +7,11 @@ at the table can configure shared blinds, cents denominations, and the optional
 2–7 offsuit bonus from Settings. Players can also set their own total stack.
 During play, the server queues edits until it has settled the hand and recorded
 winnings. It applies the latest values before checking who can play again.
-Hands deal automatically whenever at least two connected players have chips.
+Hands deal automatically whenever at least two connected, non-away players have chips
+and the table is not paused. Anyone can pause/resume the game. Away retains a
+seat, checks or folds automatically in the current hand, and skips later deals.
+A shared decision timer defaults to 20 seconds; expiry checks if free, otherwise
+folds. Settings can change the limit or disable it, taking effect next hand during play.
 The first deal and ordinary results wait five seconds; all-in results hold for
 6.1 seconds after one run or 8.1 seconds after two runs. The browser displays the game and sends player actions.
 The backend owns the rules, chips, and authoritative state. Players can open the
@@ -26,12 +30,14 @@ flowchart LR
     Game -->|Player views| Connections
     Connections -->|Save before publishing| Persistence[Persistence]
     Persistence -->|Atomic checkpoint and history| Store[(DynamoDB)]
-    Store -->|Private queries| Export[Offline history exports]
+    Store -->|Environment-scoped private queries| Export[Offline history exports]
 ```
 
 One backend process coordinates the live game. DynamoDB is optional: it keeps a
 checkpoint for restart recovery and permanent game history, saved together.
-Without it, the game lives only in memory and history is not retained. Feedback
+Storage namespaces separate development, test, staging and production activity;
+records carry environment labels for private analytics. Without storage, the game
+lives only in memory and history is not retained. Feedback
 uses the private history table independently of game checkpoints; submissions
 require durable storage and are never broadcast to players.
 
