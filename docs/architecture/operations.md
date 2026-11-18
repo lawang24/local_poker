@@ -13,6 +13,10 @@ The browser reaches the backend through a WebSocket-capable proxy or a configure
 backend address. Gameplay and private feedback use separate connections to the
 same backend. HTTPS pages use secure WebSockets. During development, the
 [Vite configuration](../../frontend/vite.config.ts) provides the proxy.
+The current frontend/backend addresses are recorded in the
+[hosting instructions](../../README.md#hosting-and-current-limits).
+The backend currently does not read or enforce `ALLOWED_WS_ORIGINS`; that
+environment variable is not the source of truth for the frontend address.
 
 The backend's environment selects its database tables and supplies its AWS
 authentication. [Storage initialization](../../backend/storage.py) enables

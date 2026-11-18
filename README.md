@@ -153,6 +153,13 @@ with mobile viewport simulation, not a physical-phone or real-AWS load test.
 
 ## Hosting and current limits
 
+The live frontend is [larrypokernow.netlify.app](https://larrypokernow.netlify.app/).
+Its backend is [headwins-poker.onrender.com](https://headwins-poker.onrender.com/health)
+(Render service `headwins_poker`). The frontend's build-time `VITE_WS_URL` points
+to `wss://headwins-poker.onrender.com/ws`. `ALLOWED_WS_ORIGINS` is currently unused
+by the backend and is not an authoritative frontend address or an enforced
+origin restriction.
+
 Build the frontend with `npm run build` and serve `frontend/dist`. Proxy `/ws` to Uvicorn with WebSocket upgrade support, or supply an explicit `VITE_WS_URL` at build time. HTTPS pages require `wss://` connections. Set **`POKER_ENVIRONMENT=production` on the hosted backend before deploying this
 version** to retain the existing production checkpoint and player identities.
 The default development namespace opens a separate game. Run **one backend worker**: live gameplay is not coordinated between processes. `/health` returns `{"status":"ok"}` unless a persistence failure has stopped the game.
