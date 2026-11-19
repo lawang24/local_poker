@@ -218,6 +218,11 @@ class GameServer:
         # Called under the game lock. A failed peer must not disconnect the actor
         # whose action triggered this broadcast. Repair state and notify survivors.
         while self.sockets:
+            # Settlement can remove queued seats through any action or timer.
+            # The checkpoint above must succeed before their sockets close.
+            seated = {p.id for p in self.table.players}
+            removed = [self.sockets.pop(pid) for pid in list(self.sockets) if pid not in seated]
+            await asyncio.gather(*(self.close(socket, code=4002) for socket in removed))
             failures = [
                 failure
                 for failure in await asyncio.gather(
@@ -231,7 +236,8 @@ class GameServer:
             for pid, socket in failures:
                 if self.sockets.get(pid) is socket:
                     del self.sockets[pid]
-                    self.table.disconnect(pid)
+                    if any(p.id == pid for p in self.table.players):
+                        self.table.disconnect(pid)
             await asyncio.gather(*(self.close(socket) for _, socket in failures))
             self.prepare_turn()
             await self.checkpoint()
@@ -327,11 +333,6 @@ async def websocket_endpoint(websocket: WebSocket):
                     elif kind == "kick":
                         target_id = data.get("player_id")
                         server.table.kick(player.id, target_id)
-                        # Persist removal before acknowledging it or closing the peer.
-                        await server.checkpoint()
-                        removed = server.sockets.pop(target_id, None)
-                        if removed:
-                            await server.close(removed, code=4002)
                     elif kind == "set_stack":
                         server.table.set_stack(player.id, data.get("amount"))
                     elif kind == "chat":

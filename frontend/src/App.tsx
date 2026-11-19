@@ -268,7 +268,7 @@ export default function App() {
               <ActionControls key={`${state.hand_number}:${state.street}:${state.actor}:${state.target}:${state.max_raise_to}:${state.cents}`} state={state} ready={ready} send={send} />
             </section>
             <SessionLog dialog={logDialog} state={state} />
-            <TableChat openLog={openLog} dialog={chatDialog} trigger={chatButton} messages={state.chat_history ?? []} ready={ready} send={text => send({ type: "chat", text })} />
+            <TableChat selfId={state.you} openLog={openLog} dialog={chatDialog} trigger={chatButton} messages={state.chat_history ?? []} ready={ready} send={text => send({ type: "chat", text })} />
           </div>
         </>
       )}

@@ -24,7 +24,7 @@ npm ci
 npm run dev -- --host 127.0.0.1
 ```
 
-Open http://127.0.0.1:5173/ in two separate browser profiles (or different browsers) and enter a name in each. Tabs in the same profile reuse one player identity. Everyone connects to the same global game. Hands deal automatically after five seconds once two connected, non-away players have chips and the game is not paused. **Options → Invite friends** copies the app URL. Options also contains Settings, Leave, and table help.
+Open http://127.0.0.1:5173/ in two separate browser profiles (or different browsers) and enter a name in each. Tabs in the same profile reuse one player identity. Everyone connects to the same global game. Hands deal automatically after five seconds once two connected, non-away players have chips and the game is not paused. **Options → Invite friends** copies the app URL. Options also contains Settings, Feedback, and table help. The visible Leave seat button disconnects and returns to the join screen.
 
 Vite proxies `/ws` to port 8000. To use another backend address, copy `frontend/.env.example` to `frontend/.env.development.local` and set `VITE_WS_URL` (for example, `ws://127.0.0.1:8001/ws`), then run Uvicorn on that port. A localhost invitation works only on the same machine; remote friends need a reachable hosted address.
 

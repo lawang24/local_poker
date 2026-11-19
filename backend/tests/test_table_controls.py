@@ -2,7 +2,7 @@ import asyncio
 import json
 import unittest
 from datetime import datetime, timezone
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
 from game import InvalidAction
 from main import GameServer
 from storage import restore, snapshot
@@ -128,6 +128,27 @@ class TableControlTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(self.t.paused_at)
         self.assertEqual(len(self.t.players), 2)
         self.assertIsNotNone(self.s.deal_task)
+
+    async def test_queued_kick_closes_socket_only_after_settlement_is_saved(self):
+        self.t.start(self.a.id)
+        peer = AsyncMock()
+        self.s.sockets[self.b.id] = peer
+        self.t.kick(self.a.id, self.b.id)
+        await self.s.broadcast()
+        peer.close.assert_not_called()
+        while self.t.running:
+            self.t.act(self.t.actor, 'check_call')
+        saved = []
+
+        async def checkpoint():
+            peer.close.assert_not_called()
+            saved.append(snapshot(self.t))
+
+        with patch.object(self.s, 'checkpoint', side_effect=checkpoint):
+            await self.s.broadcast()
+        self.assertNotIn(self.b.id, [p['id'] for p in json.loads(saved[0])['players']])
+        peer.close.assert_awaited_once_with(code=4002)
+        self.assertNotIn(self.b.id, self.s.sockets)
 
     async def test_timer_validation_queue_disable_and_recovery(self):
         for value in (-1, 601, True, 1.5, '20', None):

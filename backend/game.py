@@ -83,6 +83,7 @@ class Table:
         self._paused_disconnects = set()
         self.cents = False
         self.queued_stacks = {}
+        self.queued_kicks = {}
         self.queued_settings = None
         self.pending = set()
         self.result = None
@@ -262,8 +263,6 @@ class Table:
         self.log(f"{p.name} moved to seat {seat + 1}.")
 
     def kick(self, player_id, target_id):
-        if self.running:
-            raise InvalidAction("Remove players between hands.")
         if not self.player(player_id).connected:
             raise InvalidAction("Join the table before removing players.")
         target = next((p for p in self.players if p.id == target_id), None)
@@ -271,6 +270,16 @@ class Table:
             raise InvalidAction("That player is no longer at the table.")
         if target.id == player_id:
             raise InvalidAction("Use Leave table to leave your own seat.")
+        requester = dict(player_id=player_id, name=self.player(player_id).name)
+        if self.running:
+            if target.id not in self.queued_kicks:
+                self.queued_kicks[target.id] = requester
+                self.record("seat_removal_requested", player_id=target.id, removed_by=player_id)
+                self.log(f"{requester['name']} queued removal of {target.name} after this hand.")
+            return
+        self.remove_seat(target, **requester)
+
+    def remove_seat(self, target, player_id, name):
         # Keep the dealer's predecessor so the next deal still moves clockwise.
         if self.dealer == target.id:
             index = self.players.index(target)
@@ -279,7 +288,7 @@ class Table:
             self.record_transfer(target, "chips_removed", target.stack, "seat_removed")
         self.players.remove(target)
         self.record("seat_removed", player_id=target.id, removed_by=player_id)
-        self.log(f"{self.player(player_id).name} removed {target.name} from the table.")
+        self.log(f"{name} removed {target.name} from the table.")
 
     def clockwise(self, after, candidates):
         ids = [p.id for p in self.players]
@@ -294,7 +303,9 @@ class Table:
         )
 
     def add_chat(self, player, text):
-        self.chat_history = (self.chat_history + [{"name": player.name, "text": text}])[-100:]
+        message = {"name": player.name, "text": text, "player_id": player.id,
+                   "sent_at": datetime.now(timezone.utc).isoformat()}
+        self.chat_history = (self.chat_history + [message])[-100:]
         self.record("message", text=f"{player.name}: {text}", player_id=player.id)
 
     def log(self, message):
@@ -956,6 +967,11 @@ class Table:
         for player_id, amount in self.queued_stacks.items():
             self.apply_stack(self.player(player_id), amount)
         self.queued_stacks.clear()
+        for target_id, requester in self.queued_kicks.items():
+            target = next((p for p in self.players if p.id == target_id), None)
+            if target:
+                self.remove_seat(target, **requester)
+        self.queued_kicks.clear()
 
     def state(self, viewer):
         p = self.player(viewer)
@@ -1001,6 +1017,7 @@ class Table:
             "ledger": self.ledger_view(),
             "you": viewer,
             "queued_stack": self.queued_stacks.get(viewer),
+            "queued_kicks": list(self.queued_kicks),
             "queued_settings": ({key: value for key, value in self.queued_settings.items()
                                  if key != "player_id"} if self.queued_settings else None),
             "dealer": self.dealer,

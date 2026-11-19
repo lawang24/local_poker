@@ -72,10 +72,15 @@ The engine owns blinds, dealer rotation, turn order, minimum raises, all-in
 eligibility, main/side pots, ties, and uncalled-chip returns. Chips are integers;
 players start with 1,000 and blinds are 5/10. Players can request a new total for their own stack at any time. Players have stable numbered seats; the engine keeps its player
 list sorted by seat for clockwise dealing and action order. Moves to empty seats
-and removal of other players are allowed only between hands. Removal records a
-cash-out and preserves the next dealer when removing the current dealer.
+are allowed only between hands. Removal requests are accepted at any time; during
+a hand, the target keeps playing until settlement. After payout, bonuses, and
+queued stack edits, queued removals cash out the final balance and free the seat
+before the next deal. Duplicate requests keep the original requester attribution.
+Removal preserves the next dealer when removing the current dealer.
 Seat numbers are checkpointed; older checkpoints derive them from list order.
-Moves emit `seat_changed` events, and kicks attribute `seat_removed` to the requester.
+Moves emit `seat_changed` events. In-hand kicks emit `seat_removal_requested`;
+applied kicks attribute `seat_removed` to the requester. Queued removals are
+checkpointed and applied after refunds on recovery from an interrupted hand.
 Any connected player can change the shared lobby settings:
 positive integer-unit blinds (SB ≤ BB ≤ 1,000,000), cents mode, and the per-opponent
 2–7 offsuit bonus (0–1,000,000 units, default 0), and decision time

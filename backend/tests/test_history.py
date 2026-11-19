@@ -198,7 +198,8 @@ class HistoryTests(unittest.TestCase):
             table.add_chat(player, f"chat {i}")
             table.log(f"action {i}")
         self.assertEqual(table.history, [f"action {i}" for i in range(20, 120)])
-        self.assertEqual(table.chat_history, [{"name": "A", "text": f"chat {i}"} for i in range(20, 120)])
+        self.assertEqual([(m["name"], m["player_id"], m["text"]) for m in table.chat_history],
+                         [("A", player.id, f"chat {i}") for i in range(20, 120)])
         messages = [e for e in table.events if e["type"] == "message"]
         self.assertEqual(len(messages), 240)
         self.assertEqual(messages[0]["text"], "A: chat 0")

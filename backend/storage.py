@@ -48,6 +48,7 @@ def snapshot(table):
             "cents": table.cents,
             "queued_settings": table.queued_settings,
             "queued_stacks": table.queued_stacks,
+            "queued_kicks": table.queued_kicks,
         },
         separators=(",", ":"),
         ensure_ascii=False,
@@ -106,6 +107,7 @@ def restore(payload):
     table.seven_deuce_bonus = data.get("seven_deuce_bonus", 0)
     table.queued_settings = data.get("queued_settings")
     table.queued_stacks = data.get("queued_stacks", {})
+    table.queued_kicks = data.get("queued_kicks", {})
     table.session_id = data.get("session_id")
     table.hand_id = data.get("hand_id")
     table.hand_start = data.get("hand_start")

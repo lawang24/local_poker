@@ -2,7 +2,8 @@
 
 larrypokernow is a browser-based, play-money Texas Hold’em app for two to nine
 players at one shared table, with nine fixed seats and no host or privileged seat.
-Between hands, players can move to empty seats or remove another player. Anyone
+Between hands, players can move to empty seats. Players can request removal of
+another player at any time; during a hand, removal waits until after payout. Anyone
 at the table can configure shared blinds, cents denominations, and the optional
 2–7 offsuit bonus from Settings. Players can also set their own total stack.
 During play, the server queues edits until it has settled the hand and recorded

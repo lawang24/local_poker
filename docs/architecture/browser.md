@@ -19,7 +19,10 @@ retained commitments and shows the server's zero pot, including on two-board
 results. This is presentation only; pot-sized raise presets and settlement still
 use the full server pot.
 Empty seats are buttons that move the viewer between hands; occupied nameplates open a native
-modal with player details and a kick confirmation for other players. Clicking
+modal with player details and a kick confirmation for other players. Kick player
+stays enabled during play, explains that removal follows payout, and displays
+confirmation from the server’s `queued_kicks` list. The dialog stays open for
+in-hand requests; repeated clicks do not create duplicate removals. Clicking
 your own nameplate opens a stack editor using the existing `set_stack` command.
 The editor opens with your queued total if one exists, otherwise your current balance.
 It uses the denomination selected for the next hand. During play, the dialog
@@ -44,14 +47,23 @@ The bottom seat’s committed amount is anchored directly above its cards. [Tabl
 shows player messages in a scrollable desktop dock. Players can expand it to read earlier messages. Log / Ledger opens [SessionLog.tsx](../../frontend/src/SessionLog.tsx) on the recent activity log.
 The Ledger tab shows sortable player totals, expandable seat visits and chip movements,
 and a CSV download with one row per visit. On narrow screens the amounts form a
-two-column grid beneath each name. New message opens an input above the desktop dock. Enter sends the message. Below
-1024px, Log and Chat open their respective dialogs from the toolbar. Sending closes the dialog and returns
-focus to the opener. Closing without sending preserves the draft. A live chat
+two-column grid beneath each name. New message or the M key opens an input above the desktop dock. Enter sends and closes that input. Below
+1024px, Chat opens a bottom sheet. Enter sends and keeps the transcript open. Tapping the shaded table or pressing Escape dismisses the sheet. Both layouts group consecutive messages by sender and display the last message’s local time when available. Closing without sending preserves the draft. A live chat
 appears at its sender’s seat for six seconds; another message from the same player
 replaces it. Long messages are abbreviated in the bubble and remain complete in chat.
 [TableToolbar.tsx](../../frontend/src/TableToolbar.tsx) owns a compact Options button,
-Away / I’m back and Pause / Resume controls, a connection indicator, and Feedback in the top-right corner. Options opens a native
-modal containing Settings, Invite, Leave, and expandable table instructions. The
+a visible Leave seat button and Away / I’m back controls in a personal-action group,
+with Pause / Resume separately in the upper-right corner. The personal group is
+vertical on desktop and horizontal on phones; [TableToolbar.css](../../frontend/src/TableToolbar.css)
+owns its responsive layout. On screens at most 760 CSS pixels tall, phone Chat/Log
+share a horizontal row below the seats; taller phones retain the reference stack.
+Landscape phones place this row beside betting controls in the bottom lane.
+The toolbar is an absolute overlay at every mobile width, so it does not consume
+the game area’s height. Leave seat retains the existing disconnect-and-return-to-join
+behavior rather than entering spectator mode. Connection status is available to screen
+readers and in Options. Options opens a native modal containing Settings, Invite,
+Feedback, and expandable table instructions. Feedback opens its own native dialog
+and returns focus to its button in Options on close. The
 modal supports Escape and native focus management. The desktop frame places the larrypokernow name above Options and the game type and
 blinds in the opposite corner. Hand and street information stays with the board.
 [Cards.tsx](../../frontend/src/Cards.tsx) embeds the 52 [clean card faces](../../frontend/src/assets/clean-cards/)
@@ -84,7 +96,7 @@ presets are clamped to server limits, including short all-in raises. Opening bet
 are labelled Bet, while the wire command remains `raise`. The draft resets when the hand, street, actor,
 target, or maximum changes. Buttons disable while an action is pending, the game is paused, or the
 connection is unavailable. [TurnTimer.tsx](../../frontend/src/TurnTimer.tsx) displays
-a countdown and remaining-time bar at the acting seat, using the server deadline
+a thin lime bar along the bottom of the acting player’s nameplate, with remaining seconds in the button’s accessible description, using the server deadline
 and a monotonic local elapsed clock. The frozen server pause time keeps it steady
 during pauses. Expiry never sends a client action. Away seats are labelled Away;
 the central caption identifies a paused game. The shared Settings form accepts
@@ -166,6 +178,12 @@ bonus; blank or zero disables the timer. Dealing is automatic while unpaused, in
 there is no manual deal button or auto-deal toggle. The server snapshot is authoritative;
 there is no browser-local settings preference. During play, Settings displays the current hand’s values and any accepted
 replacement for the next hand. New shared settings reset open drafts, and leaving the page discards unsaved changes.
+Settings and stack submission buttons stay enabled, including when the displayed
+value is unchanged or already queued. Forms validate amounts on submission;
+connected submissions can replace or repeat a queued edit while other updates
+are pending. The server applies the latest accepted edits after payout. A
+disconnected submission reports the connection error and must be retried;
+the browser does not store an offline command queue.
 
 [amounts.ts](../../frontend/src/amounts.ts) formats amounts and converts numeric
 inputs to integer wire units. With cents enabled, 100 wire units equal 1.00;

@@ -25,19 +25,49 @@ class SeatingTests(unittest.TestCase):
         self.assertEqual(self.table.dealer, self.b.id)
         self.assertEqual(self.table.actor, self.b.id)
 
-    def test_invalid_moves_and_live_hand_removal_do_not_mutate(self):
+    def test_invalid_moves_do_not_mutate(self):
         for seat in [True, -1, 9, "3", None, self.b.seat]:
             before = snapshot(self.table)
             with self.assertRaises(InvalidAction):
                 self.table.move_seat(self.a.id, seat)
             self.assertEqual(snapshot(self.table), before)
         self.table.start(self.a.id)
-        for action in [lambda: self.table.move_seat(self.a.id, 7),
-                       lambda: self.table.kick(self.a.id, self.b.id)]:
+        for action in [lambda: self.table.move_seat(self.a.id, 7)]:
             before = snapshot(self.table)
             with self.assertRaises(InvalidAction):
                 action()
             self.assertEqual(snapshot(self.table), before)
+
+    def test_queued_kick_preserves_hand_and_cashout_follows_payout(self):
+        self.table.start(self.a.id)
+        before = (self.table.actor, self.table.pot, self.b.stack)
+        self.table.kick(self.a.id, self.b.id)
+        self.table.kick(self.c.id, self.b.id)
+        self.assertEqual((self.table.actor, self.table.pot, self.b.stack), before)
+        self.assertEqual(self.table.state(self.b.id)["queued_kicks"], [self.b.id])
+        self.assertTrue(self.b.connected)
+        self.table.set_stack(self.b.id, 1234)
+        while self.table.running:
+            self.table.act(self.table.actor, "check_call")
+        self.assertNotIn(self.b, self.table.players)
+        completed = next(e for e in self.table.events if e["type"] == "hand_completed")
+        removed = next(e for e in self.table.events if e["type"] == "seat_removed")
+        self.assertGreater(self.table.events.index(removed), self.table.events.index(completed))
+        cashout = [e for e in self.table.events if e["type"] == "chips_removed" and e.get("reason") == "seat_removed"]
+        self.assertEqual(cashout[-1]["amount"], 1234)
+        self.assertEqual(removed["removed_by"], self.a.id)
+        self.table.start(self.a.id)
+        self.assertEqual(len(self.table.players), 2)
+
+    def test_mutual_queued_kicks_survive_requester_removal_and_restart(self):
+        self.table.start(self.a.id)
+        self.table.kick(self.a.id, self.b.id)
+        self.table.kick(self.b.id, self.a.id)
+        restored = restore(snapshot(self.table))
+        self.assertEqual([p.id for p in restored.players], [self.c.id])
+        self.assertFalse(restored.queued_kicks)
+        cashouts = [e["amount"] for e in restored.events if e["type"] == "chips_removed" and e.get("reason") == "seat_removed"]
+        self.assertEqual(cashouts, [1000, 1000])
 
     def test_kick_cashout_and_manual_rejoin(self):
         self.table.dealer = self.b.id

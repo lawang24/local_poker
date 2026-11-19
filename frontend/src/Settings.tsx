@@ -17,10 +17,10 @@ export function Settings({ state, ready, send, back }: {
   const [bb, setBb] = useState(inputAmount(saved.big_blind, saved.cents));
   const [bonusInput, setBonusInput] = useState(inputAmount(saved.seven_deuce_bonus, saved.cents));
   const [timerInput, setTimerInput] = useState(saved.turn_seconds ? String(saved.turn_seconds) : "");
-  const seconds = timerInput.trim() === "" ? 0 : Number(timerInput);
+  const seconds = Number(timerInput);
   const bonus = parseAmount(bonusInput, cents);
   const small = parseAmount(sb, cents), big = parseAmount(bb, cents);
-  const valid = Number.isInteger(seconds) && seconds >= 0 && seconds <= 600 && small > 0 && big >= small && big <= 1_000_000 && bonus >= 0 && bonus <= 1_000_000;
+  const valid = /^[0-9]*$/.test(timerInput) && seconds <= 600 && small > 0 && big >= small && big <= 1_000_000 && bonus >= 0 && bonus <= 1_000_000;
   const changed = seconds !== saved.turn_seconds || small !== saved.small_blind || big !== saved.big_blind || cents !== saved.cents || bonus !== saved.seven_deuce_bonus;
   return <section className="settings-page panel" aria-labelledby="settings-title">
     <button type="button" onClick={back}>← Back to table</button>
@@ -33,9 +33,9 @@ export function Settings({ state, ready, send, back }: {
     </div>}
     <form onSubmit={e => {
       e.preventDefault();
-      if (ready && valid && changed) send({ type: "settings", small_blind: small, big_blind: big, cents, seven_deuce_bonus: bonus, turn_seconds: seconds });
+      if (valid) send({ type: "settings", small_blind: small, big_blind: big, cents, seven_deuce_bonus: bonus, turn_seconds: seconds });
     }}>
-      <fieldset disabled={!ready}>
+      <fieldset>
         <legend>Denominations</legend>
         <label className="setting-toggle">
           <span>Use cents<small>Use 0.01 increments for blinds, bets, and stacks. 100 whole units become 1.00 when enabled.</small></span>
@@ -49,11 +49,11 @@ export function Settings({ state, ready, send, back }: {
         </label>
         <div className="blind-inputs">
           <label>Small blind (SB)<input type="number" required min={cents ? .01 : 1} max={cents ? 10000 : 1000000} step={cents ? .01 : 1} value={sb} onChange={e => setSb(e.target.value)} /></label>
-          <label>Big blind (BB)<input type="number" required min={cents ? .01 : 1} max={cents ? 10000 : 1000000} step={cents ? .01 : 1} value={bb} onChange={e => setBb(e.target.value)} /></label>
+          <label>Big blind (BB)<input type="number" required min={Math.max(cents ? .01 : 1, Number(sb) || 0)} max={cents ? 10000 : 1000000} step={cents ? .01 : 1} value={bb} onChange={e => setBb(e.target.value)} /></label>
         </div>
         <p className="hint">Blinds must be positive, with the big blind at least as large as the small blind.</p>
       </fieldset>
-      <fieldset disabled={!ready}>
+      <fieldset>
         <legend>2–7 offsuit game</legend>
         <label>Bonus per opponent
           <input type="number" required min={0} max={cents ? 10000 : 1000000} step={cents ? .01 : 1}
@@ -61,16 +61,17 @@ export function Settings({ state, ready, send, back }: {
         </label>
         <p id="bonus-help" className="hint">Win with 2–7 offsuit by taking the main pot outright on every board or by getting everyone to fold. Each other player dealt in pays up to the amount they have left. Set to 0 to turn off.</p>
       </fieldset>
-      <fieldset disabled={!ready}>
+      <fieldset>
         <legend>Turn timer</legend>
         <label>Decision Time Limit (seconds) (blank for no limit)
-          <input type="number" min={0} max={600} step={1} value={timerInput}
+          <input type="text" inputMode="numeric" pattern="[0-9]*" value={timerInput}
+            onFocus={e => e.currentTarget.select()}
             onChange={e => setTimerInput(e.target.value)} aria-describedby="timer-help" />
         </label>
         <p id="timer-help" className="hint">When time runs out, you automatically check if allowed, otherwise fold. Set 1–600 seconds, or leave blank to turn off.</p>
       </fieldset>
       <div className="settings-save">
-        <button className="primary" disabled={!ready || !valid || !changed}>{state.running ? "Queue settings" : "Save settings"}</button>
+        <button className="primary">{state.running ? "Queue settings" : "Save settings"}</button>
         <span role="status">{!ready ? "Waiting for connection or update…" : changed ? "Unsaved changes" : state.queued_settings ? "Queued for next hand" : "Lobby settings are up to date"}</span>
       </div>
     </form>

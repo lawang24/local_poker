@@ -74,13 +74,14 @@ function Seat({ player, state, index, select, speech }: {
         {equity !== undefined && <span className={`equity-badge ${equity > 50 ? "ahead" : equity < 50 ? "behind" : "tied"}`} style={{ "--equity-percent": equity } as CSSProperties} aria-label={`${player.name} equity ${equity}%`} />}
         {cards.length ? <Cards cards={slots} hole winningCards={winner ? result?.winning_cards?.[player.id] : undefined} /> : covered ? <div className="card-backs" aria-label="Two hidden cards"><span /><span /></div> : <div className="empty-cards" aria-hidden="true">{player.folded ? "×" : ""}</div>}
       </div>
-      <button type="button" className="nameplate" onClick={select} aria-label={`Player options for ${player.name}`}>
+      <button type="button" className="nameplate" onClick={select} aria-label={`Player options for ${player.name}`}
+        aria-describedby={acting && state.turn_deadline != null ? "turn-time-left" : undefined}>
         <strong title={player.name}>{player.name}</strong>
         <span className="seat-balance">{formatAmount(payoutBalance(player, state), state.cents)}</span>
         {payout > 0 && <span className="seat-payout">+{formatAmount(payout, state.result?.cents ?? state.cents)}</span>}
         {label && !waiting && !payout && <span className="player-status">{label}</span>}
+        {acting && state.turn_deadline != null && <TurnTimer key={`${state.turn_deadline}:${state.paused}:${state.server_time}`} state={state} />}
       </button>
-      {acting && state.turn_deadline != null && <TurnTimer key={`${state.turn_deadline}:${state.paused}:${state.server_time}`} state={state} />}
       {!!strengths?.length && <div className={`hand-strength ${strengths.length > 1 ? "two-runs" : ""}`} aria-live="polite">
         <span className="sr-only">{mine ? "Your" : player.name + "’s"} made hand: </span>
         <div className="hand-badge">
@@ -94,8 +95,8 @@ function Seat({ player, state, index, select, speech }: {
   </article>;
 }
 
-function PlayerStackEditor({ player, state, ready, send, close }: {
-  player: Player; state: State; ready: boolean; send: (action: Action) => void; close: () => void;
+function PlayerStackEditor({ player, state, send, close }: {
+  player: Player; state: State; send: (action: Action) => boolean; close: () => void;
 }) {
   const cents = state.queued_settings?.cents ?? state.cents;
   const [draft, setDraft] = useState<string | null>(null);
@@ -105,26 +106,25 @@ function PlayerStackEditor({ player, state, ready, send, close }: {
   const unit = cents ? 100 : 1;
   return <form onSubmit={event => {
     event.preventDefault();
-    if (!ready || !valid) return;
-    send({ type: "set_stack", amount });
-    if (!state.running) close();
+    if (!valid) return;
+    if (send({ type: "set_stack", amount }) && !state.running) close();
   }}>
     <label>Your stack
       <input type="number" min="0" max={1_000_000 / unit} step={1 / unit}
-        required value={stack} disabled={!ready}
+        required value={stack}
         onChange={event => setDraft(event.target.value)} aria-describedby="player-stack-help" />
     </label>
     <p id="player-stack-help" className="hint">{state.running
       ? `Set your total for the next hand in ${cents ? "cents" : "whole chips"}. It replaces your balance after payouts.`
       : `Set your total stack from 0 to ${formatAmount(1_000_000, state.cents)} chips.`}</p>
     {state.queued_stack != null && <p className="queued-stack" role="status">Queued for next hand · {formatAmount(state.queued_stack, cents)} chips</p>}
-    <button className="primary" disabled={!ready || !valid || amount === state.queued_stack}>{state.running ? "Queue stack" : "Set stack"}</button>
+    <button className="primary">{state.running ? "Queue stack" : "Set stack"}</button>
   </form>;
 }
 
 export function PokerTable({ state, ready, send, speech }: {
   speech: Record<string, string>;
-  state: State; ready: boolean; send: (action: Action) => void;
+  state: State; ready: boolean; send: (action: Action) => boolean;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [editorVersion, setEditorVersion] = useState(0);
@@ -180,16 +180,16 @@ export function PokerTable({ state, ready, send, speech }: {
       {player?.id === state.you
         ? <>
           <PlayerStackEditor key={`${editorVersion}:${state.queued_stack}:${state.queued_settings?.cents ?? state.cents}`}
-            player={player} state={state} ready={ready} send={send} close={() => dialog.current?.close()} />
+            player={player} state={state} send={send} close={() => dialog.current?.close()} />
           {!state.running && <p className="hint">Click an empty seat to move between hands.</p>}
         </>
-        : player && <p>Remove this player from the table? Their remaining chips will be cashed out. They can join again manually.</p>}
-      {state.running && <p className="hint">Finish the current hand before moving seats or removing players.</p>}
+        : player && <p>Remove this player from the table? {state.running ? "Removal takes effect after this hand's payout. They can finish playing this hand. " : ""}Their remaining chips will be cashed out. They can join again manually.</p>}
+      {player && state.queued_kicks?.includes(player.id) && <p role="status">Removal queued for after this hand.</p>}
+      {state.running && player?.id === state.you && <p className="hint">Finish the current hand before moving seats.</p>}
       <div className="feedback-actions">
         <button autoFocus onClick={() => dialog.current?.close()}>{player?.id === state.you && state.queued_stack != null ? "Done" : "Cancel"}</button>
-        {player && player.id !== state.you && <button className="danger" disabled={!ready || state.running} onClick={() => {
-          send({ type: "kick", player_id: player.id });
-          dialog.current?.close();
+        {player && player.id !== state.you && <button className="danger" onClick={() => {
+          if (send({ type: "kick", player_id: player.id }) && !state.running) dialog.current?.close();
         }}>Kick player</button>}
       </div>
     </dialog>

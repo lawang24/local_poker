@@ -97,7 +97,9 @@ class PersistenceTests(unittest.TestCase):
                         ws.receive_json()["state"]["players"][0]["stack"], 777
                     )
                     ws.send_json({"type": "chat", "text": "Persist me"})
-                    ws.receive_json()
+                    sent = ws.receive_json()["state"]["chat_history"]
+                    self.assertTrue(sent[0]["sent_at"])
+                    self.assertEqual(sent[0]["text"], "Persist me")
             main.server = main.GameServer(store=store)
             with TestClient(main.app) as client:
                 with client.websocket_connect("/ws") as ws:
@@ -107,7 +109,7 @@ class PersistenceTests(unittest.TestCase):
                     self.assertEqual(ws.receive_json()["id"], session["id"])
                     state = ws.receive_json()["state"]
                     self.assertEqual(state["players"][0]["stack"], 777)
-                    self.assertEqual(state["chat_history"], [{"name": "Alice", "text": "Persist me"}])
+                    self.assertEqual(state["chat_history"], sent)
                     self.assertNotIn("Alice: Persist me", state["history"])
                     self.assertNotIn(session["token"], str(state))
 

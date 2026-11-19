@@ -382,7 +382,7 @@ header .eyebrow { font-size: 9px; margin-bottom: 2px; color: #a8a8a8; }
   .connection-info { flex-wrap: wrap; justify-content: flex-start; }
   .settings-page { padding: 20px; margin-top: 20px; }
   .settings-page fieldset { padding: 14px; }
-  .settings-page input[type=number] { font-size: 16px; }
+  .settings-page input:is([type=number], [inputmode=numeric]) { font-size: 16px; }
 }
 
 /* Reserve the header corner for a quiet, accessible feedback icon. */
@@ -887,14 +887,6 @@ button.nameplate:hover, button.nameplate:focus-visible { border-color: #ddd; }
 .report-dialog :is(input,textarea), .chat-dialog input { font-size: 16px; }
 .report-dialog textarea { min-height: 68px; height: clamp(68px, calc(var(--typing-height, 100dvh) * .18), 145px); }
 .report-dialog .feedback-actions { flex-shrink: 0; padding-top: 12px; }
-.chat-dialog[open] { display: flex; flex-direction: column; height: min(440px, calc(var(--typing-height, 100dvh) - 16px)); }
-.chat-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.chat-dialog h2 { margin: 0; }
-.chat-dialog .log { min-height: 0; font-size: 14px; white-space: pre-wrap; }
-.chat-dialog { top: calc(var(--typing-top, 0px) + var(--typing-height, 100dvh)); transform: translate(-50%, -100%); width: min(100vw, 480px); border-radius: 8px 8px 0 0; background: #302e30; }
-.chat-dialog form { display: flex; gap: 8px; }
-.chat-dialog input { min-height: 44px; }
-.chat-panel .chat-heading h2 { width: 100%; }
 .bet-dialog { background: #202420; }
 .bet-form .raise-confirmation button { min-height: 44px; }
 @media (max-width: 1023px) {
@@ -910,8 +902,18 @@ button.nameplate:hover, button.nameplate:focus-visible { border-color: #ddd; }
   .app-table .bet-right { left: calc(86% - min(54px, 14cqw) - 4px) !important; transform: translate(-100%, -50%); }
 }
 
-/* Shared game controls stay alongside Options at both table sizes. */
-.toolbar-icon[aria-pressed="true"] { color: #f1c65d; }
-.turn-timer { position: absolute; top: 100%; right: 0; z-index: 4; min-width: 48px; padding: 2px 5px 5px; border-radius: 0 0 3px 3px; background: #252525; color: #fff; font-size: 11px; line-height: 14px; text-align: center; font-variant-numeric: tabular-nums; }
-.turn-timer::after { content: ""; position: absolute; bottom: 0; left: 0; width: var(--time-left); height: 3px; background: #65cb88; }
-.turn-timer.is-urgent::after { background: #f0ac54; }
+.nameplate:has(.turn-timer) { overflow: hidden; }
+.turn-timer {
+  position: absolute;
+  inset: auto 0 0;
+  height: 7%;
+  background: #dedede;
+  pointer-events: none;
+}
+.turn-timer::after {
+  content: "";
+  display: block;
+  width: var(--time-left);
+  height: 100%;
+  background: #a9df58;
+}

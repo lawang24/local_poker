@@ -48,7 +48,7 @@ All messages are JSON text over `/ws`. Clients join before sending game commands
 | Client → server | `away` | Boolean `away`; change only the authenticated player’s availability while keeping their seat. |
 | Client → server | `settings` | Any joined player sets integer `small_blind`, `big_blind`, boolean `cents`, optional integer `seven_deuce_bonus` (0–1,000,000), and optional integer `turn_seconds` (0–600; zero disables the timer). During play the request replaces the queued settings. Omitted bonus/timer fields retain the queued value if present, otherwise the active one. Legacy `auto_deal` is optional and cannot disable dealing. |
 | Client → server | `move_seat` | `seat` is an integer 0–8; move to an empty seat between hands. |
-| Client → server | `kick` | `player_id` identifies another player to remove between hands. |
+| Client → server | `kick` | `player_id` identifies another player to remove immediately between hands or after the current hand settles. |
 | Client → server | `chat` | `text` contains 1–300 characters after trimming. |
 | Server → client | `session` | `id` is the stable player ID; `token` is its browser credential. |
 | Server → client | `state` | `state` contains that player’s complete table view. |
@@ -61,7 +61,9 @@ its normal state broadcast, including in memory-only games. It reads no private
 archive records. Amounts use integer wire units and the table’s current denomination.
 
 Each public player includes a zero-based `seat`. Moves and kicks validate under
-the same lock as betting. Kicks save the removal before detaching and closing the
+the same lock as betting. In-hand kicks retain the target socket until settlement.
+All snapshots expose `queued_kicks`, the list of player IDs pending removal.
+Broadcast saves applied removals before detaching and closing the
 target socket with `4002`, then broadcast the remaining table. A stale socket
 cannot send further commands or disconnect a replacement in its cleanup.
 
@@ -124,7 +126,7 @@ checkpoints. `result.hands` maps player IDs to public cards in deal order. It in
 After accepting a chat message, the server includes `chat: {player_id, text}`
 beside `state` in that broadcast, using the authenticated sender’s ID and trimmed
 text. This field triggers the live seat bubble; ordinary updates, repairs and
-reconnects do not replay it. Snapshots carry the rolling transcript in `state.chat_history` as ordered `{name, text}` entries. The session log reads game activity from `state.history`. Private
+reconnects do not replay it. Snapshots carry the rolling transcript in `state.chat_history` as ordered `{name, text, player_id, sent_at}` entries. The UTC timestamp and sender ID are optional when restoring older checkpoints. The session log reads game activity from `state.history`. Private
 feedback never enters this path.
 
 ## Turn timing and pause
@@ -159,14 +161,15 @@ hands to preserve order; a new join between hands prunes disconnected seats.
 Pruning records a cash-out. A retained seat keeps its chips on reconnect; a pruned
 seat starts with 1,000 again under the same player ID, recorded as a new chip entry.
 There is no host role or privileged seat. Any connected player can remove another
-player between hands, including a disconnected player. Removal cashes out the
+player at any time, including a disconnected player. During a hand, the request
+queues removal after payout without changing their ability to play. Removal cashes out the
 remaining stack and frees the seat; it does not ban the identity. The removed
 player can explicitly join again with a fresh 1,000-chip entry.
 
 Seats have stable numbers 0–8. A new player takes the first free seat and can
 click another empty seat to move between hands. Retained-seat reconnects preserve
-the seat number. Occupied seats cannot be taken or swapped, and neither moving
-nor kicking is allowed during a hand.
+the seat number. Occupied seats cannot be taken or swapped, and moving
+is allowed only between hands.
 
 A table session opens on the first join and closes when everyone disconnects or
 on restart. Reconnecting within an open session does not add another buy-in.

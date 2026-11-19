@@ -43,6 +43,7 @@ export type State = TableSettings & {
   pot: number;
   target: number;
   queued_stack: number | null;
+  queued_kicks?: string[];
   queued_settings: TableSettings | null;
   min_raise_to: number;
   max_raise_to: number;
@@ -50,7 +51,7 @@ export type State = TableSettings & {
   call_amount: number;
   hand_number: number;
   history: string[];
-  chat_history: { name: string; text: string }[];
+  chat_history: { name: string; text: string; player_id?: string; sent_at?: string }[];
   server_time: number;
   runout: null | {
     hand_id: string; count: number; active: number; started_at: number;
