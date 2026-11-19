@@ -110,16 +110,22 @@ viewports do not replace physical-device testing. Setup is in the
 [README](../../README.md#browser-end-to-end-tests).
 
 UI verification uses a separate memory-only backend (`DYNAMODB_TABLE` empty)
-and an explicitly configured development WebSocket URL. Compare reference and
-local screenshots at matching CSS viewport dimensions; check sparse and full
-tables, showdown card spacing, controls, chat, and reconnects. Browser viewport
-overrides may be affected by zoom, so verify `innerWidth` and `innerHeight`.
-All PokerNow comparisons reuse one private reference table across runs and
-viewport sizes. Resume the same players there to reach the state under test
-and use an unseated identity at that table for the spectator view. The
-[project instructions](../../AGENTS.md) describe how to resume the table.
-Check the game frame, seat and card positions, and lower control lane against the
-live table at the same viewport size. Mobile keyboard behavior requires physical-device validation.
+and an explicitly configured development WebSocket URL. The supplied local
+[phone and desktop recordings](../../references/pokernow/README.md) are the primary
+PokerNow reference. Inspect the relevant video before UI changes and cite its
+filename and timestamps in verification notes. Compare equivalent game states
+and orientations, matching CSS viewport dimensions when known; video resolution
+alone does not establish CSS dimensions. Document unknown dimensions or scaling.
+Check sparse and full tables, showdown card spacing, controls, chat, and reconnects
+where the recordings cover them. Browser viewport overrides may be affected by
+zoom, so verify `innerWidth` and `innerHeight`.
+Use the live private table only for states or interactions absent from the videos.
+These fallback checks reuse one private table across runs and viewport sizes,
+resuming the same players and using an unseated identity for spectator checks.
+The [project instructions](../../AGENTS.md) describe how to resume the table.
+For live fallback comparisons, match CSS viewport sizes. Missing recordings or
+unobserved states remain explicit coverage limits. Mobile keyboard behavior
+requires physical-device validation.
 
 The browser E2E runners extend the deal timer for deterministic seating and
 recovery scenarios and use the legacy start command at controlled boundaries.
