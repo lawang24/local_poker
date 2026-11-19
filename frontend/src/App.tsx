@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
 import "./DesktopTable.css";
 import { formatAmount } from "./amounts";
@@ -7,6 +7,7 @@ import { ActionControls, type Action } from "./ActionControls";
 import { PokerTable } from "./PokerTable";
 import { RunoutChoice } from "./RunoutChoice";
 
+import { VoiceControl } from "./VoiceControl";
 import { Feedback } from "./Feedback";
 import { TableToolbar } from "./TableToolbar";
 import { Settings } from "./Settings";
@@ -146,7 +147,7 @@ export default function App() {
     };
   }, [joined]);
 
-  const send = (msg: Action) => {
+  const send = useCallback((msg: Action) => {
     if (ws.current?.readyState !== WebSocket.OPEN) {
       setError("Wait until you reconnect.");
       return false;
@@ -155,7 +156,7 @@ export default function App() {
     setPending(true);
     ws.current.send(JSON.stringify(msg));
     return true;
-  };
+  }, []);
   const me = state?.players.find((p) => p.id === state.you);
   const ready = status === "Connected" && !pending;
   const settings = state?.queued_settings ?? state;
@@ -163,6 +164,7 @@ export default function App() {
   return (
     <main className={`app ${joined && state && !settingsOpen ? "app-table" : ""}`}>
       {joined && state ? <TableToolbar name={me?.name || name} status={status}
+        voice={!settingsOpen && <VoiceControl state={state} ready={ready} send={send} />}
         paused={state.paused} away={!!me?.away} ready={ready}
         pause={() => send({ type: "pause", paused: !state.paused })}
         toggleAway={() => send({ type: "away", away: !me?.away })}

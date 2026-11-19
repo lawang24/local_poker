@@ -28,6 +28,23 @@ Open http://127.0.0.1:5173/ in two separate browser profiles (or different brows
 
 Vite proxies `/ws` to port 8000. To use another backend address, copy `frontend/.env.example` to `frontend/.env.development.local` and set `VITE_WS_URL` (for example, `ws://127.0.0.1:8001/ws`), then run Uvicorn on that port. A localhost invitation works only on the same machine; remote friends need a reachable hosted address.
 
+## Experimental voice controls
+
+On the experimental voice branch, use **Voice off** in the table header to opt in.
+Keep the page visible. Say **check**, **call**, **fold**, **raise 50**, **raise half pot**,
+**raise pot**, **raise minimum**, **bet 50**, or **all in**. Numeric amounts are the
+street total in the displayed denomination. Say **confirm** for a proposed raise,
+all-in call, or free fold; **cancel** discards it. Recognition stops outside your
+turn. Errors leave the buttons available. Your browser may process audio through
+its speech service; browser support and permissions vary. Voice starts off each
+visit, and returning from Settings requires enabling it again. This experiment
+has visual feedback, not spoken table narration or guaranteed lock-screen support.
+
+Run parser checks with `cd frontend && node --test tests/voice.test.mjs`.
+For simulated speech lifecycle checks, open `/tests/voice-harness.html` on the local
+Vite server. The harness uses the real backend and real player identity, so use
+only an isolated test backend. Its input emits synthetic transcripts, not audio.
+
 ## Gameplay
 
 - Start with 1,000 play chips; blinds are 5/10. Click your nameplate to set your own total stack, including a rebuy. During play, your total and any shared settings edits queue for the next hand. Payouts settle first. Between hands, edits apply immediately.

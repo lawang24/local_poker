@@ -126,6 +126,34 @@ The UI uses server-computed action limits to guide the player. The backend still
 validates every request. See the [connection module](connections.md) for messages
 and the [game module](game.md) for visibility rules.
 
+## Experimental voice input
+
+[VoiceControl.tsx](../../frontend/src/VoiceControl.tsx) adds a session-only, default-off
+microphone toggle. Browser SpeechRecognition (including the WebKit-prefixed API)
+provides English final transcripts; unsupported browsers retain the normal controls.
+Recognition starts only on the connected, ready viewer's betting turn, and aborts
+when the turn changes, an action is pending, the game pauses, the viewer goes away,
+the page is hidden, or voice is disabled. Opening Settings or leaving unmounts it
+and resets opt-in. It does not keep a separate microphone stream open between turns;
+browser permission retention and service availability vary. The browser may send
+audio to its speech provider; the poker backend receives only ordinary actions.
+
+[voiceCommands.ts](../../frontend/src/voiceCommands.ts) matches complete commands:
+check, call, fold, bet/raise amounts, half-pot/pot/minimum presets, and all in.
+Amounts use the existing total-bet and cents conventions; pot presets match the
+bet editor. Invalid or unavailable commands send nothing. Raises, all-in calls,
+and folds when checking is free require a subsequent confirm; cancel discards the
+proposal. A new command replaces it. Proposals expire with the recognition turn,
+and stale callbacks and repeated results cannot send a second action. Existing
+server validation remains authoritative. Voice status and confirmations are visual;
+spoken table narration and background/locked-phone operation are not implemented.
+
+The development-only [speech harness](../../frontend/tests/voice-harness.html)
+mounts the real app with a simulated speech service for deterministic turn gating,
+confirmation, cancellation and error checks. It is not part of the production
+entry point and does not measure real speech accuracy. Parser regression tests
+are in [voice.test.mjs](../../frontend/tests/voice.test.mjs).
+
 ## All-in runout choice
 
 [RunoutChoice.tsx](../../frontend/src/RunoutChoice.tsx) displays a native modal over

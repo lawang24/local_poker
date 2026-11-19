@@ -1,0 +1,10 @@
+.voice-feedback { position: fixed; top: 4px; left: 25%; width: 50%; margin: 0; padding: 5px 8px; border-radius: 5px; background: #202020ed; color: #eee; font: 12px/1.35 Arial, sans-serif; text-align: center; pointer-events: none; }
+@media (max-width: 1023px) { .voice-feedback { top: 66px; left: 8px; width: min(260px, calc(100% - 16px)); text-align: left; font-size: 11px; } }
+.table-toolbar button.voice-toggle { position: absolute; pointer-events: auto; top: 4px; left: 130px; width: 110px; height: 36px; display: flex; align-items: center; gap: 6px; padding: 5px 8px; min-height: 36px; border: 1px solid #ffffff24; background: #202020; }
+.table-toolbar button.voice-toggle svg { width: 20px; height: 20px; }
+.table-toolbar button.voice-toggle span { font: 11px Arial, sans-serif; }
+@media (max-width: 1023px) {
+ .table-toolbar button.voice-toggle { top: max(8px, env(safe-area-inset-top)); left: 158px; width: 50px; height: 52px; padding: 4px 2px 0; flex-direction: column; justify-content: space-between; gap: 0; border: 0; background: transparent; }
+ .table-toolbar button.voice-toggle svg { width: 30px; height: 30px; }
+ .table-toolbar button.voice-toggle span { font: 7px/12px Arial, sans-serif; white-space: nowrap; }
+}

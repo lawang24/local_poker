@@ -1,8 +1,9 @@
-import { useRef, useState, type RefObject } from "react";
+import { useRef, useState, type ReactNode, type RefObject } from "react";
 import { Feedback } from "./Feedback";
 import "./TableToolbar.css";
 
-export function TableToolbar({ name, status, blinds, paused, away, ready, pause, toggleAway, settingsOpen, settings, leave, chatButton, openChat, openLog }: {
+export function TableToolbar({ voice, name, status, blinds, paused, away, ready, pause, toggleAway, settingsOpen, settings, leave, chatButton, openChat, openLog }: {
+  voice: ReactNode;
   paused: boolean; away: boolean; ready: boolean; pause: () => void; toggleAway: () => void;
   chatButton: RefObject<HTMLButtonElement | null>; openChat: () => void; openLog: () => void;
   name: string; status: string; blinds: string; settingsOpen: boolean; settings: () => void; leave: () => void;
@@ -29,6 +30,7 @@ export function TableToolbar({ name, status, blinds, paused, away, ready, pause,
       </button>
     </>}
     </div>
+    {voice}
     {!settingsOpen && <>
       <button className="toolbar-icon pause-toggle" disabled={!ready} aria-label={paused ? "Resume game" : "Pause game"} title={paused ? "Resume game" : "Pause game"} aria-pressed={paused} onClick={pause}>
         <svg viewBox="0 0 24 24" aria-hidden="true">{paused ? <path d="m8 4 12 8-12 8Z" /> : <path d="M4 3h6v18H4Zm10 0h6v18h-6Z" />}</svg>
@@ -54,6 +56,7 @@ export function TableToolbar({ name, status, blinds, paused, away, ready, pause,
         <Feedback name={name} />
       </nav>
       {copyError && <p role="alert">Copy the table URL from your address bar to invite friends.</p>}
+      <details><summary>Experimental voice control</summary><p>Use the microphone button to opt in each visit. English commands: check, call, fold, raise 50, raise half pot, raise pot, raise minimum, bet 50, all in. Amounts are total bets, not extra chips. Raises, all-ins, and free folds need “confirm”; say “cancel” to discard. Only listens on your turn while this page is visible and connected. Turning voice off stops the microphone. Your browser may send audio to its speech service. Recognition and microphone permissions vary by browser; keep the page open and use buttons if voice is unavailable.</p></details>
       <details><summary>How this table works</summary><p>Play chips only. Hands deal automatically when two connected players have chips and are not away. Away keeps your seat, auto-checks or folds this hand, and skips future deals. Pause freezes play until anyone resumes. Click your name to set your stack. During play, stack and settings edits apply after the hand. Disconnecting folds a live hand unless you’re all-in. Refreshing restores a retained seat.</p></details>
     </dialog>
   </header>;
