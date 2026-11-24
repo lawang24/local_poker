@@ -153,12 +153,41 @@ with mobile viewport simulation, not a physical-phone or real-AWS load test.
 
 ## Hosting and current limits
 
-The live frontend is [larrypokernow.netlify.app](https://larrypokernow.netlify.app/).
+The frontend is hosted on both
+[Netlify](https://larrypokernow.netlify.app/) and
+[GitHub Pages](https://lawang24.github.io/local_poker/).
 Its backend is [headwins-poker.onrender.com](https://headwins-poker.onrender.com/health)
 (Render service `headwins_poker`). The frontend's build-time `VITE_WS_URL` points
 to `wss://headwins-poker.onrender.com/ws`. `ALLOWED_WS_ORIGINS` is currently unused
 by the backend and is not an authoritative frontend address or an enforced
 origin restriction.
+
+### GitHub Pages and Netlify
+
+[The Pages workflow](.github/workflows/pages.yml) builds and deploys `frontend/dist`
+on pushes to `main`, or a manual run on `main`. In repository **Settings → Pages**,
+set the source to **GitHub Actions**. The workflow installs the locked dependencies,
+runs lint, and supplies the production `VITE_WS_URL` and Pages base path at build
+time. The usual project path is `/local_poker/`; the path comes from the Pages
+configuration so a custom domain can use `/` instead.
+
+Netlify continues to use its existing build configuration (`frontend`,
+`npm run build`, output `dist`) and production `VITE_WS_URL`. Its default base
+path remains `/`. No built files need to be committed, and no additional backend
+is created. Both sites join the same production table. Player identities and
+preferences are stored per browser origin, so switching between the sites does
+not restore the same player identity.
+
+To check the Pages build locally against an isolated test backend:
+
+```sh
+cd frontend
+VITE_WS_URL=ws://127.0.0.1:8001/ws npm run build -- --base /local_poker/
+npm run preview -- --host 127.0.0.1 --base /local_poker/
+```
+
+Open `http://127.0.0.1:4173/local_poker/`. Use the ordinary `npm run build` for
+the root-path Netlify build.
 
 Build the frontend with `npm run build` and serve `frontend/dist`. Proxy `/ws` to Uvicorn with WebSocket upgrade support, or supply an explicit `VITE_WS_URL` at build time. HTTPS pages require `wss://` connections. Set **`POKER_ENVIRONMENT=production` on the hosted backend before deploying this
 version** to retain the existing production checkpoint and player identities.

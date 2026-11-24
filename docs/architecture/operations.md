@@ -15,6 +15,12 @@ same backend. HTTPS pages use secure WebSockets. During development, the
 [Vite configuration](../../frontend/vite.config.ts) provides the proxy.
 The current frontend/backend addresses are recorded in the
 [hosting instructions](../../README.md#hosting-and-current-limits).
+Netlify and GitHub Pages independently host the same frontend source. The
+[Pages workflow](../../.github/workflows/pages.yml) builds the default branch
+with the base path supplied by Pages and an explicit production WebSocket URL;
+Netlify keeps the root-path build. Both reach the same backend and shared table.
+Browser identities and preferences remain scoped to each site's origin.
+Deployment does not copy the backend or expose its storage credentials.
 The backend currently does not read or enforce `ALLOWED_WS_ORIGINS`; that
 environment variable is not the source of truth for the frontend address.
 
