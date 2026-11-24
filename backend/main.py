@@ -49,8 +49,11 @@ class GameServer:
 
     def prepare_turn(self):
         if self.table.paused_at is None and not self.failed:
-            while self.table.actor and self.table.player(self.table.actor).away:
-                self.table.automatic_action("away")
+            while self.table.actor:
+                if self.table.player(self.table.actor).away:
+                    self.table.automatic_action("away")
+                elif not self.table.consume_queued_action():
+                    break
             vote = self.table.runout_vote
             if vote and any(self.table.player(pid).away for pid in vote["eligible"]):
                 self.table.resolve_runouts(1, "away")
@@ -312,6 +315,10 @@ async def websocket_endpoint(websocket: WebSocket):
                         server.table.start(player.id)
                     elif kind in {"fold", "check_call", "raise"}:
                         server.table.act(player.id, kind, data.get("amount"))
+                    elif kind == "extra_time":
+                        server.table.use_extra_time(player.id)
+                    elif kind == "queue_action":
+                        server.table.queue_action(player.id, data.get("action"), data.get("hand_number"), data.get("street"))
                     elif kind == "reveal_cards":
                         server.table.reveal_cards(player.id, data.get("hand_number"), data.get("cards"))
                     elif kind == "runout":

@@ -80,6 +80,8 @@ class Table:
         self.paused_at = None
         self.turn_deadline = None
         self._turn_key = None
+        self.extra_time_used = False
+        self.queued_actions = {}
         self._paused_disconnects = set()
         self.cents = False
         self.queued_stacks = {}
@@ -823,6 +825,7 @@ class Table:
             self.log(f"{p.name} shows {' and '.join(new_cards)}.")
 
     def disconnect(self, player_id):
+        self.queued_actions.pop(player_id, None)
         p = self.player(player_id)
         p.connected = False
         self.record("player_disconnected", player_id=p.id)
@@ -862,8 +865,51 @@ class Table:
         key = (self.hand_number, self.street, self.actor) if self.running and self.actor else None
         if key != self._turn_key:
             self._turn_key = key
+            self.extra_time_used = False
             now = self.paused_at if self.paused_at is not None else datetime.now(timezone.utc).timestamp()
             self.turn_deadline = now + self.turn_seconds if key and self.turn_seconds else None
+
+    def use_extra_time(self, player_id):
+        self.sync_turn()
+        now = datetime.now(timezone.utc).timestamp()
+        if (self.paused_at is not None or not self.running or self.actor != player_id
+                or self.turn_deadline is None or self.turn_deadline <= now or self.extra_time_used):
+            raise InvalidAction("Extra time is not available.")
+        self.turn_deadline += 30
+        self.extra_time_used = True
+        self.record("extra_time", player_id=player_id, seconds=30)
+
+    def queue_action(self, player_id, action, hand_number, street):
+        p = self.player(player_id)
+        if (self.paused_at is not None or not self.running or self.actor == player_id
+                or not p.in_hand or p.folded or p.stack == 0 or p.away or not p.connected
+                or hand_number != self.hand_number or street != self.street):
+            raise InvalidAction("Wait for a live hand to queue an action.")
+        if action not in (None, "check", "fold", "check_fold"):
+            raise InvalidAction("Unknown queued action.")
+        if action == "check" and p.committed < self.target:
+            raise InvalidAction("You cannot queue a check while facing a bet.")
+        self.queued_actions.pop(player_id, None)
+        if action:
+            self.queued_actions[player_id] = (hand_number, street, action)
+
+    def consume_queued_action(self):
+        # Choices belong to one street and are private to their owner. A check
+        # never becomes a call if someone bets before that player's turn.
+        for pid, (hand, street, action) in list(self.queued_actions.items()):
+            p = next((p for p in self.players if p.id == pid), None)
+            if (not self.running or hand != self.hand_number or street != self.street
+                    or not p or not p.connected or p.away or p.folded or p.stack == 0
+                    or (action == "check" and p.committed < self.target)):
+                self.queued_actions.pop(pid, None)
+        choice = self.queued_actions.pop(self.actor, None)
+        if not choice:
+            return False
+        action = choice[2]
+        p = self.player(self.actor)
+        self.act(p.id, "fold" if action == "fold" or (action == "check_fold" and p.committed < self.target)
+                 else "check_call", reason="queued")
+        return True
 
     def automatic_action(self, reason):
         p = self.player(self.actor)
@@ -1010,6 +1056,9 @@ class Table:
                     "in_hand": q.in_hand,
                     "folded": q.folded,
                     "committed": q.committed,
+                    "checked": (self.running and not self.runout_vote and not self.runout
+                                and q.in_hand and not q.folded
+                                and q.acted_at == 0 and q.committed == 0),
                     "all_in": q.in_hand and not q.folded and q.stack == 0,
                 }
                 for q in self.players
@@ -1035,6 +1084,8 @@ class Table:
             "auto_deal": self.auto_deal,
             "turn_seconds": self.turn_seconds,
             "turn_deadline": self.turn_deadline,
+            "extra_time_used": self.extra_time_used,
+            "queued_action": self.queued_actions.get(viewer, (None, None, None))[2],
             "paused": self.paused_at is not None,
             "paused_at": self.paused_at,
             "seven_deuce_bonus": self.seven_deuce_bonus,

@@ -8,6 +8,7 @@ export type Player = {
   in_hand: boolean;
   folded: boolean;
   committed: number;
+  checked: boolean;
   all_in: boolean;
 };
 export type LedgerSession = {
@@ -29,6 +30,8 @@ export type State = TableSettings & {
   paused: boolean;
   paused_at: number | null;
   turn_deadline: number | null;
+  extra_time_used?: boolean;
+  queued_action?: "check" | "fold" | "check_fold" | null;
   players: Player[];
   ledger: LedgerRow[];
   you: string;

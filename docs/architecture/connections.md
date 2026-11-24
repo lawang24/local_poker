@@ -40,6 +40,8 @@ All messages are JSON text over `/ws`. Clients join before sending game commands
 | Client → server | `join` | `name` and optional saved `token`; create or reclaim a seat. |
 | Client → server | `start` | Legacy compatibility command to start a hand immediately; the current UI relies on automatic dealing. |
 | Client → server | `fold`, `check_call` | Act on the current turn. |
+| Client → server | `queue_action` | `action` is `check`, `fold`, `check_fold`, or null to cancel. `hand_number` and `street` must match; only eligible waiting players can queue. |
+| Client → server | `extra_time` | The current actor adds 30 seconds once per unpaused, unexpired timed decision. |
 | Client → server | `raise` | `amount` is the total commitment for this street. |
 | Client → server | `runout` | `count` is integer 1 or 2; `hand_id` must match the pending offer. Only connected contenders may vote, once per hand. |
 | Client → server | `reveal_cards` | `hand_number` identifies the completed hand. `cards` lists one or both distinct zero-based positions in the sender’s own hand. Repeating a reveal leaves it public. |
@@ -54,6 +56,10 @@ All messages are JSON text over `/ws`. Clients join before sending game commands
 | Server → client | `state` | `state` contains that player’s complete table view. |
 | Server → client | `error` | `message` explains an invalid request. |
 
+Each snapshot includes private `queued_action` for its viewer and public
+`extra_time_used` for the current decision. Before publishing, the server consumes
+queued choices under the game lock, then schedules the resulting actor’s deadline.
+
 Each player snapshot includes the same `ledger` array for the open table session.
 Rows contain the public player ID, name, buy-in, buy-out, stack, net, and seat
 visits with timestamps and chip movements. The game sends this projection with
@@ -61,7 +67,10 @@ its normal state broadcast, including in memory-only games. It reads no private
 archive records. Amounts use integer wire units and the table’s current denomination.
 
 Each public player includes a zero-based `seat`. Moves and kicks validate under
-the same lock as betting. In-hand kicks retain the target socket until settlement.
+the same lock as betting. The public `checked` boolean derives from a live,
+non-folded player's zero commitment and zero `acted_at` target on the current
+street; street resets, betting closure and settlement clear the indicator.
+In-hand kicks retain the target socket until settlement.
 All snapshots expose `queued_kicks`, the list of player IDs pending removal.
 Broadcast saves applied removals before detaching and closing the
 target socket with `4002`, then broadcast the remaining table. A stale socket

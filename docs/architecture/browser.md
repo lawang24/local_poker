@@ -18,6 +18,10 @@ current-street breakdown until resolution. After payout, the display ignores any
 retained commitments and shows the server's zero pot, including on two-board
 results. This is presentation only; pot-sized raise presets and settlement still
 use the full server pot.
+The public player `checked` flag displays a white lowercase “check” pill in that
+seat's bet position, including above the bottom seat's cards. It remains until
+the player bets, calls or folds, or the street ends. A queued check is not shown
+until executed. The browser uses the snapshot without local action timers.
 Empty seats are buttons that move the viewer between hands; occupied nameplates open a native
 modal with player details and a kick confirmation for other players. Kick player
 stays enabled during play, explains that removal follows payout, and displays
@@ -42,7 +46,9 @@ the right. Shorter landscape phones also use oval seating with a bottom control 
 and balance, with transient status or payout alongside the balance. One dealer chip follows the server-designated dealer across the felt. It sits clear of the seat’s cards, balance and bet, with an oval profile on landscape tables and a round profile on portrait tables. Empty seats use numbered outlined slots. A connected player
 who has not been dealt into the hand shows a clock and “Waiting” in the card area,
 beside the balance on desktop and above the nameplate on phones. The deal replaces
-the indicator with hole cards.
+the indicator with hole cards. Away uses the same clock slot and replaces the
+folded-hand marker. Live or revealed cards take precedence over the clock, so
+an away player with cards still visible never has status artwork overlaid on them.
 The bottom seat’s committed amount is anchored directly above its cards. [TableChat.tsx](../../frontend/src/TableChat.tsx)
 shows player messages in a scrollable desktop dock. Players can expand it to read earlier messages. Log / Ledger opens [SessionLog.tsx](../../frontend/src/SessionLog.tsx) on the recent activity log.
 The Ledger tab shows sortable player totals, expandable seat visits and chip movements,
@@ -90,21 +96,35 @@ Desktop shortcuts S, 1, and 2 mirror the buttons. The group fills accepted choic
 green and stays visible until the next deal. Opponents see each shown card in its original
 position with a back in the hidden slot. The table caption indicates automatic dealing
 or waiting for funded players. Stack
-editing stays in the viewer’s nameplate dialog. During the viewer's turn, a compact outlined row presents Call or Check,
-Bet/Raise, and Fold; unavailable actions are disabled. Outside their turn the
-controls render nothing and the table caption identifies the actor. Bet/Raise opens a native dialog without focusing an input. It has numeric and slider
-inputs plus minimum, half-pot, pot, and all-in presets. Presets only select a draft;
-an explicit confirmation sends the raise. Cancel or Escape returns to the action
-row. Pot raises include the call and then a fraction of the pot after calling;
-presets are clamped to server limits, including short all-in raises. Opening bets
-are labelled Bet, while the wire command remains `raise`. The draft resets when the hand, street, actor,
-target, or maximum changes. Buttons disable while an action is pending, the game is paused, or the
-connection is unavailable. [TurnTimer.tsx](../../frontend/src/TurnTimer.tsx) displays
-a thin lime bar along the bottom of the acting player’s nameplate, with remaining seconds in the button’s accessible description, using the server deadline
-and a monotonic local elapsed clock. The frozen server pause time keeps it steady
-during pauses. Expiry never sends a client action. Away seats are labelled Away;
-the central caption identifies a paused game. The shared Settings form accepts
-1–600 decision seconds, with blank or zero disabling the timer. The action row stays in place behind the dialog.
+editing stays in the viewer’s nameplate dialog. [BettingControls.css](../../frontend/src/BettingControls.css)
+positions a persistent four-button row in the bottom lane: quick minimum Bet or
+Call, Bet/Raise, Check, and Fold. Bet/Raise replaces the row with an inline amount
+editor, leaving the table geometry unchanged. Desktop uses one horizontal row;
+portrait stacks the amount above presets and slider, with Back and Bet/Raise beside
+them. The editor temporarily hides the phone Chat/Log group to avoid overlap.
+The amount shows its big-blind equivalent. Presets select minimum, half-pot,
+three-quarter-pot, pot, or all-in; minus/plus change the draft by one big blind.
+Numeric and slider inputs retain integer wire-unit precision. Pot raises include
+the call and a fraction of the pot after calling, clamped to server limits including
+short all-ins. Submitting explicitly sends `raise`; Back or Escape preserves the
+draft and returns focus to Bet/Raise. Opening the editor does not focus the input.
+The draft resets when hand, street, actor, target, maximum, or denomination changes.
+C, R, K, F, I, and T mirror the visible quick action, editor, Check, Fold,
+Check or Fold, and extra-time buttons. Shortcuts ignore repeats, modified keys,
+text entry, hidden pages, and open dialogs. Free folds still use confirmation.
+
+Outside the viewer’s turn, Check, Fold, and Check or Fold toggle server-owned
+queued choices. Only that player sees their selected choice. A queued Check is
+cancelled if a bet appears and can never call chips. Choices expire on street/hand
+changes, disconnect, or ineligibility. Buttons disable during pending actions,
+pauses, and disconnection. The extra-time button adds 30 seconds once per decision
+and displays Extra time activated after acknowledgement; disabled timers cannot
+be extended. This duration is an application policy, not verified PokerNow parity.
+[TurnTimer.tsx](../../frontend/src/TurnTimer.tsx) displays a thin lime bar along the
+acting player’s nameplate, with remaining seconds in its accessible description,
+using the server deadline and a monotonic local elapsed clock. Pause freezes it;
+expiry never sends a client action. Settings accepts 1–600 decision seconds, with
+blank or zero disabling the timer. Away seats are labelled Away.
 [FoldAction.tsx](../../frontend/src/FoldAction.tsx) asks for confirmation when Fold
 is selected with nothing to call, including the big blind's option. Its white modal,
 wording, session checkbox, and red Cancel / green Confirm buttons follow the supplied

@@ -12,7 +12,8 @@ Hands deal automatically whenever at least two connected, non-away players have 
 and the table is not paused. Anyone can pause/resume the game. Away retains a
 seat, checks or folds automatically in the current hand, and skips later deals.
 A shared decision timer defaults to 20 seconds; expiry checks if free, otherwise
-folds. Settings can change the limit or disable it, taking effect next hand during play.
+folds. Players may add 30 seconds once per decision, and queue Check, Fold, or
+Check or Fold while waiting on the current street. Settings can change the limit or disable it, taking effect next hand during play.
 The first deal and ordinary results wait five seconds; all-in results hold for
 6.1 seconds after one run or 8.1 seconds after two runs. The browser displays the game and sends player actions.
 The backend owns the rules, chips, and authoritative state. Players can open the

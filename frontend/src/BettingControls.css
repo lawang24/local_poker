@@ -1,0 +1,65 @@
+/* Bottom controls from desktop.mov 0:35 and phone.mov 0:45. */
+.app-table .betting-panel.action-controls { pointer-events:auto; font-family:Mulish,Arial,sans-serif; display:flex; flex-direction:column; align-items:flex-end; gap:10px; width:min(460px,100%); padding:6px; min-height:0; }
+.betting-panel button { position:relative; font-family:inherit; text-transform:uppercase; }
+.betting-panel kbd { position:absolute; top:-5px; right:12%; padding:0 5px; background:#242123; font:700 10px/1.1 Arial,sans-serif; }
+.app-table .betting-panel .primary-actions { width:100%; display:grid; grid-template-columns:1.2fr 1.2fr 1fr 1fr; gap:7px; }
+.app-table .betting-panel .primary-actions button { min-width:0; min-height:52px; padding:8px 3px; border:1px solid #359a5f; border-bottom-width:3px; border-radius:6px; color:#359a5f; background:transparent; font-weight:700; font-size:12px; letter-spacing:0; }
+.app-table .betting-panel .primary-actions .fold-action { border-color:#ec3d19; color:#ec3d19; }
+.app-table .betting-panel .primary-actions button:disabled { opacity:.2; }
+.app-table .betting-panel button[aria-pressed="true"], .app-table .betting-panel .primary-actions button:hover:not(:disabled) { background:#359a5f; color:#fff; }
+.app-table .betting-panel .primary-actions .fold-action[aria-pressed="true"] { background:#b64d37; color:white; }
+.betting-status { display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+.your-turn { color:#e6ee00; text-transform:uppercase; font-size:12px; font-weight:700; }
+.betting-panel .extra-time, .betting-panel .queue-combined { min-height:32px; padding:9px 12px; border:1px solid #fff; border-bottom-width:3px; border-radius:6px; font-size:11px; font-weight:700; }
+.betting-panel .extra-time { color:#111; background:#fcfcfc; }
+.betting-panel .extra-time:disabled { opacity:1; cursor:default; }
+.betting-panel .extra-time kbd { color:#fff; }
+.betting-panel .queue-combined { color:#fff; background:#242123; }
+.app-table .betting-panel.is-sizing { width:100%; }
+.inline-bet-editor { display:grid; width:100%; grid-template-columns:minmax(0,1fr) 64px 64px; gap:6px; align-items:end; margin:0; }
+.bet-value { grid-column:1 / -1; width:35%; min-width:124px; display:block; padding:7px 4px; border-radius:8px; background:#2b292b; color:#929092; text-align:center; font-size:13px; }
+.bet-value-input { display:block; position:relative; margin-top:5px; }
+.bet-value input { display:block; width:100%; min-height:44px; padding:0 20px 0 5px; border:1px solid #454345; border-radius:5px; font:700 30px/1.25 Mulish,Arial,sans-serif; text-align:center; background:#302e30; color:#fff; appearance:textfield; }
+.bet-value input::-webkit-inner-spin-button, .bet-value input::-webkit-outer-spin-button { appearance:none; margin:0; }
+.bet-value input::selection { background:#28834d; color:#fff; }
+.bet-bb { position:absolute; top:3px; right:2px; color:#f5e866; font:10px Arial,sans-serif; pointer-events:none; }
+.bet-sizing { min-width:0; padding:3px; border-radius:7px; background:#302e30; }
+.sizing-presets { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:3px; }
+.sizing-presets button { min-width:0; padding:8px 1px; min-height:34px; border:1px solid #454345; border-radius:5px; background:#272527; font-size:8px; font-weight:700; white-space:nowrap; letter-spacing:0; }
+.sizing-slider { display:flex; align-items:center; height:36px; }
+.sizing-slider button { flex:0 0 30px; padding:0; height:36px; background:#393739; border:none; border-radius:0; font-size:24px; }
+.sizing-slider input { appearance:none; flex:1; min-width:0; height:5px; padding:0; margin:0 8px; background:#565456; border:0; border-radius:6px; }
+.sizing-slider input::-webkit-slider-thumb { appearance:none; width:22px; height:22px; border-radius:50%; background:#ffb713; cursor:pointer; }
+.sizing-slider input::-moz-range-thumb { width:22px; height:22px; border:0; border-radius:50%; background:#ffb713; }
+.inline-bet-editor > button { height:64px; padding:0 8px; border:0; border-bottom:4px solid #0002; border-radius:6px; color:#fff; font-size:12px; font-weight:700; }
+.bet-back { background:#747274; }
+.bet-submit { background:#359a5f; }
+.bet-error { grid-column:1 / -1; margin:0; color:#ffb5a7; font-size:12px; }
+@media (max-width:1023px) { .betting-panel kbd { display:none; } }
+@media (min-width:1024px) {
+ .app-table .betting-panel.action-controls { width:42%; bottom:1.6%; right:1.25%; padding:0; gap:.9cqw; }
+ .app-table .betting-panel.is-sizing { width:73%; }
+ .app-table .betting-panel .primary-actions { gap:.8cqw; }
+ .app-table .betting-panel .primary-actions button { min-height:6.2cqw; font-size:1.4cqw; border-radius:.5cqw; }
+ .betting-panel kbd { font-size:.85cqw; }
+ .your-turn { font-size:1.15cqw; }
+ .betting-panel .extra-time, .betting-panel .queue-combined { font-size:1.15cqw; padding:1cqw 1.3cqw; }
+ .inline-bet-editor { grid-template-columns:1.7fr 3.8fr .9fr .9fr; gap:.8cqw; }
+ .bet-value { grid-column:auto; width:auto; min-width:0; padding:.7cqw .4cqw; font-size:1.4cqw; }
+ .bet-value input { min-height:4cqw; font-size:3.2cqw; }
+ .bet-bb { font-size:.85cqw; }
+ .sizing-presets button { min-height:3.5cqw; font-size:.9cqw; }
+ .sizing-slider { height:3.8cqw; }
+ .sizing-slider button { flex-basis:3.5cqw; height:3.8cqw; font-size:2.3cqw; }
+ .sizing-slider input::-webkit-slider-thumb { width:1.8cqw; height:1.8cqw; }
+ .inline-bet-editor > button { height:6.2cqw; font-size:1.4cqw; }
+ .app-table:has(.betting-panel.is-sizing) .desktop-chat { width:25%; }
+}
+@media (max-height:500px) and (min-width:601px) and (max-width:1023px) {
+ .app-table .betting-panel.is-sizing { width:75%; }
+ .inline-bet-editor { grid-template-columns:1fr 2fr 60px 60px; }
+ .bet-value { grid-column:auto; width:auto; min-width:0; }
+}
+@media (max-width:1023px) {
+  .app-table:has(.betting-panel.is-sizing) .mobile-chat-controls { visibility:hidden; }
+}

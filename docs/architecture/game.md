@@ -135,7 +135,17 @@ player goes away, their remaining turns check when free and otherwise fold;
 all-in eligibility survives and runout consent defaults to one run. Returning
 restores future eligibility without redealing cards mid-hand. Timeout actions
 use the same check-or-fold rule and record their reason in private action history.
-A timeout alone does not set Away.
+A timeout alone does not set Away. The current actor may extend an unexpired
+deadline by 30 seconds once per decision. The server resets that allowance when
+the decision changes and reschedules timeout work after an extension.
+
+Waiting players can queue Check, Fold, or Check or Fold for their next decision
+on the current street. Queued Check cancels when facing a bet; Check or Fold checks
+for free and otherwise folds. Choices are consumed once, remain private, and expire
+on street/hand changes or player ineligibility. Disconnect clears a choice.
+Queued choices and active extensions are transient; restart recovery cancels the
+unfinished hand rather than restoring them. [Betting-control tests](../../backend/tests/test_betting_controls.py)
+cover consumption, cancellation, privacy, and extension limits.
 
 Pause state, Away flags and the decision-time setting are checkpointed with
 backward-compatible defaults. Recovery still cancels/refunds unfinished hands;

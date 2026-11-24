@@ -51,7 +51,10 @@ function Seat({ player, state, index, select, speech }: {
     ? wonRuns.some(Boolean)
     : result?.pots.some(pot => pot.winners.includes(player.id));
   const equity = state.runout?.equities[player.id];
-  const waiting = player.connected && (!player.in_hand || player.away);
+  // Cards and seat-status artwork share one slot. Live/revealed cards take
+  // precedence; otherwise Away/Waiting replaces the folded-hand marker.
+  const waiting = player.connected && (!player.in_hand || player.away)
+    && !cards.length && !covered;
   const label = player.away ? "Away" : !player.connected ? "Disconnected" : player.folded ? "Folded"
     : player.all_in && state.running ? "All-in" : acting ? "To act"
     : waiting ? "Waiting" : "";
@@ -62,7 +65,7 @@ function Seat({ player, state, index, select, speech }: {
     aria-label={`${player.name}${mine ? ", you" : ""}, ${formatAmount(player.stack, state.cents)} chips${winner ? ", winner" : ""}${label ? `, ${label}` : ""}`}
   >
     {speech && <SeatSpeech text={speech} seat={index + 1} />}
-    {index === 0 && state.running && player.committed > 0 && <div className="table-bet south-bet" aria-label={`${player.name} bet ${formatAmount(player.committed, state.cents)}`}>{formatAmount(player.committed, state.cents)}</div>}
+    {index === 0 && state.running && (player.checked || player.committed > 0) && <div className={`table-bet south-bet ${player.checked ? "check-indicator" : ""}`} aria-label={player.checked ? `${player.name} checked` : `${player.name} bet ${formatAmount(player.committed, state.cents)}`}>{player.checked ? "check" : formatAmount(player.committed, state.cents)}</div>}
     <div className="seat-body">
       {waiting && <span className="seat-waiting" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5">
@@ -73,7 +76,7 @@ function Seat({ player, state, index, select, speech }: {
       </span>}
       <div className={`seat-cards ${!mine && state.runout && state.server_time - state.runout.started_at < .2 ? "tabling-hand" : ""}`}>
         {equity !== undefined && <span className={`equity-badge ${equity > 50 ? "ahead" : equity < 50 ? "behind" : "tied"}`} style={{ "--equity-percent": equity } as CSSProperties} aria-label={`${player.name} equity ${equity}%`} />}
-        {cards.length ? <Cards cards={slots} hole winningCards={winner ? result?.winning_cards?.[player.id] : undefined} /> : covered ? <div className="card-backs" aria-label="Two hidden cards"><span /><span /></div> : <div className="empty-cards" aria-hidden="true">{player.folded ? "×" : ""}</div>}
+        {cards.length ? <Cards cards={slots} hole winningCards={winner ? result?.winning_cards?.[player.id] : undefined} /> : covered ? <div className="card-backs" aria-label="Two hidden cards"><span /><span /></div> : <div className="empty-cards" aria-hidden="true">{player.folded && !waiting ? "×" : ""}</div>}
       </div>
       <button type="button" className="nameplate" onClick={select} aria-label={`Player options for ${player.name}`}
         aria-describedby={acting && state.turn_deadline != null ? "turn-time-left" : undefined}>
@@ -197,7 +200,7 @@ export function PokerTable({ state, ready, send, speech }: {
     {players.map((player) => {
       const index = player.seat;
       const { betX, betY, mobileX, mobileY } = seats[index];
-      return index !== 0 && state.running && player.committed > 0 ? <div key={player.id} className={`table-bet ${mobileX < 50 ? "bet-left" : "bet-right"}`} style={{"--desktop-bet-x": `${betX}%`, "--desktop-bet-y": `${betY}%`, "--mobile-bet-y": `${mobileY + (mobileY < 50 ? 8 : -3)}%`} as CSSProperties} aria-label={`${player.name} bet ${formatAmount(player.committed, state.cents)}`}><i aria-hidden="true" />{formatAmount(player.committed, state.cents)}</div> : null;
+      return index !== 0 && state.running && (player.checked || player.committed > 0) ? <div key={player.id} className={`table-bet ${mobileX < 50 ? "bet-left" : "bet-right"} ${player.checked ? "check-indicator" : ""}`} style={{"--desktop-bet-x": `${betX}%`, "--desktop-bet-y": `${betY}%`, "--mobile-bet-y": `${mobileY + (mobileY < 50 ? 8 : -3)}%`} as CSSProperties} aria-label={player.checked ? `${player.name} checked` : `${player.name} bet ${formatAmount(player.committed, state.cents)}`}>{player.checked ? "check" : formatAmount(player.committed, state.cents)}</div> : null;
     })}
   </div>;
 }

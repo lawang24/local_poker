@@ -4,8 +4,8 @@ import { sessionKey } from "./session";
 import "./FoldAction.css";
 
 /** Mounted inside the turn-keyed action controls, so a new turn discards consent. */
-export function FoldAction({ ready, callAmount, playerId, fold }: {
-  ready: boolean; callAmount: number; playerId: string; fold: () => void;
+export function FoldAction({ ready, callAmount, playerId, fold, buttonRef }: {
+  ready: boolean; callAmount: number; playerId: string; fold: () => void; buttonRef?: React.Ref<HTMLButtonElement>;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const cancel = useRef<HTMLButtonElement>(null);
@@ -39,7 +39,7 @@ export function FoldAction({ ready, callAmount, playerId, fold }: {
   }
 
   return <>
-    <button type="button" className="fold-action" disabled={!ready} onClick={requestFold}>Fold</button>
+    <button ref={buttonRef} type="button" className="fold-action" aria-keyshortcuts="F" disabled={!ready} onClick={requestFold}>Fold<kbd>F</kbd></button>
     {createPortal(<dialog className="fold-confirmation" ref={dialog} aria-labelledby="fold-question"
       onKeyDown={event => {
         if (event.repeat && (event.key === "Enter" || event.key === " ")) event.preventDefault();
