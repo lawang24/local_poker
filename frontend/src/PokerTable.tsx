@@ -12,14 +12,14 @@ import { SeatSpeech } from "./SeatSpeech";
 // same seat order on the desktop oval and the two portrait rails.
 const seats = [
   { x: 50,   y: 89,   betX: 50,   betY: 78,   dealerX: 41, dealerY: 78, mobileX: 50, mobileY: 86 },
-  { x: 17,   y: 72.8, betX: 28.5, betY: 68,   dealerX: 30, dealerY: 75, mobileX: 14, mobileY: 74 },
+  { x: 17,   y: 72.8, betX: 29.2, betY: 68,   dealerX: 30, dealerY: 75, mobileX: 14, mobileY: 74 },
   { x: 11.5, y: 46.8, betX: 24,   betY: 46.8, dealerX: 23, dealerY: 56, mobileX: 14, mobileY: 58 },
   { x: 17,   y: 20.8, betX: 29.5, betY: 28.5, dealerX: 22.5, dealerY: 32.4, mobileX: 14, mobileY: 33 },
   { x: 38,   y: 8.8,  betX: 40,   betY: 23,   dealerX: 47.1, dealerY: 20.2, mobileX: 14, mobileY: 17 },
-  { x: 62,   y: 8.8,  betX: 58,   betY: 23,   dealerX: 51, dealerY: 20.9, mobileX: 86, mobileY: 17 },
-  { x: 83,   y: 20.8, betX: 70.5, betY: 28.5, dealerX: 75, dealerY: 35.8, mobileX: 86, mobileY: 33 },
+  { x: 62,   y: 8.8,  betX: 60,   betY: 23,   dealerX: 51, dealerY: 20.9, mobileX: 86, mobileY: 17 },
+  { x: 83,   y: 20.8, betX: 69.5, betY: 28.5, dealerX: 75, dealerY: 35.8, mobileX: 86, mobileY: 33 },
   { x: 89.5, y: 46.8, betX: 76.5, betY: 46.8, dealerX: 78.6, dealerY: 59.6, mobileX: 86, mobileY: 58 },
-  { x: 84,   y: 72.8, betX: 71.5, betY: 68,   dealerX: 70, dealerY: 75, mobileX: 86, mobileY: 74 },
+  { x: 84,   y: 72.8, betX: 70.5, betY: 68,   dealerX: 70, dealerY: 75, mobileX: 86, mobileY: 74 },
 ];
 
 function seatPosition(index: number): CSSProperties {
@@ -200,7 +200,9 @@ export function PokerTable({ state, ready, send, speech }: {
     {players.map((player) => {
       const index = player.seat;
       const { betX, betY, mobileX, mobileY } = seats[index];
-      return index !== 0 && state.running && (player.checked || player.committed > 0) ? <div key={player.id} className={`table-bet ${mobileX < 50 ? "bet-left" : "bet-right"} ${player.checked ? "check-indicator" : ""}`} style={{"--desktop-bet-x": `${betX}%`, "--desktop-bet-y": `${betY}%`, "--mobile-bet-y": `${mobileY + (mobileY < 50 ? 8 : -3)}%`} as CSSProperties} aria-label={player.checked ? `${player.name} checked` : `${player.name} bet ${formatAmount(player.committed, state.cents)}`}>{player.checked ? "check" : formatAmount(player.committed, state.cents)}</div> : null;
+      // Keep the upper-middle rail's bets beside its seats, above the board.
+      const mobileBetY = mobileY === 33 ? mobileY : mobileY + (mobileY < 50 ? 8 : -3);
+      return index !== 0 && state.running && (player.checked || player.committed > 0) ? <div key={player.id} className={`table-bet ${mobileX < 50 ? "bet-left" : "bet-right"} ${player.checked ? "check-indicator" : ""}`} style={{"--desktop-bet-x": `${betX}%`, "--desktop-bet-y": `${betY}%`, "--mobile-bet-y": `${mobileBetY}%`} as CSSProperties} aria-label={player.checked ? `${player.name} checked` : `${player.name} bet ${formatAmount(player.committed, state.cents)}`}>{player.checked ? "check" : formatAmount(player.committed, state.cents)}</div> : null;
     })}
   </div>;
 }

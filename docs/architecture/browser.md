@@ -19,7 +19,9 @@ retained commitments and shows the server's zero pot, including on two-board
 results. This is presentation only; pot-sized raise presets and settlement still
 use the full server pot.
 The public player `checked` flag displays a white lowercase “check” pill in that
-seat's bet position, including above the bottom seat's cards. It remains until
+seat's bet position, including above the bottom seat's cards. On phones, the
+upper-middle rail's bets and check pills sit beside their seats, above the board.
+The check pill remains until
 the player bets, calls or folds, or the street ends. A queued check is not shown
 until executed. The browser uses the snapshot without local action timers.
 Empty seats are buttons that move the viewer between hands; occupied nameplates open a native
@@ -65,7 +67,8 @@ and follows viewport and table resizing without moving the seats.
 a visible Leave seat button and Away / I’m back controls in a personal-action group,
 with Pause / Resume separately in the upper-right corner. The personal group is
 vertical on desktop and horizontal on phones; [TableToolbar.css](../../frontend/src/TableToolbar.css)
-owns its responsive layout. On screens at most 760 CSS pixels tall, phone Chat/Log
+owns its responsive layout. The desktop pause button is compact and sits
+above the upper-right seat. On screens at most 760 CSS pixels tall, phone Chat/Log
 share a horizontal row below the seats; taller phones retain the reference stack.
 Landscape phones place this row beside betting controls in the bottom lane.
 The toolbar is an absolute overlay at every mobile width, so it does not consume
@@ -99,7 +102,8 @@ or waiting for funded players. Stack
 editing stays in the viewer’s nameplate dialog. [BettingControls.css](../../frontend/src/BettingControls.css)
 positions a persistent four-button row in the bottom lane: quick minimum Bet or
 Call, Bet/Raise, Check, and Fold. Bet/Raise replaces the row with an inline amount
-editor, leaving the table geometry unchanged. Desktop uses one horizontal row;
+editor, leaving the table geometry unchanged. On phones, the amount input and
+extra-time control use separate corners beside the bottom seat. Desktop uses one horizontal row;
 portrait stacks the amount above presets and slider, with Back and Bet/Raise beside
 them. The editor temporarily hides the phone Chat/Log group to avoid overlap.
 The amount shows its big-blind equivalent. Presets select minimum, half-pot,

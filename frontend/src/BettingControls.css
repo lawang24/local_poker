@@ -63,3 +63,19 @@
 @media (max-width:1023px) {
   .app-table:has(.betting-panel.is-sizing) .mobile-chat-controls { visibility:hidden; }
 }
+@media (max-width:600px) {
+  /* Sizing uses the two corners beside the bottom seat, not the seats above. */
+  .betting-panel.is-sizing .betting-status {
+    position:absolute; right:6px; bottom:88px; max-width:calc(50% - 60px);
+  }
+  .betting-panel .bet-value { width:calc(50% - 60px); min-width:0; }
+  .sizing-presets button { white-space:normal; line-height:1.15; }
+}
+/* Reserve the bottom seat's full width on narrow phones, including long labels. */
+@media (max-width:360px) {
+  .betting-panel .betting-status { max-width:calc(50% - 60px); }
+  .betting-panel .extra-time, .betting-panel .queue-combined {
+    max-width:100%; padding:7px 6px; font-size:10px; white-space:normal;
+  }
+  .betting-panel .your-turn { font-size:10px; white-space:nowrap; }
+}

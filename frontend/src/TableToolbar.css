@@ -53,3 +53,10 @@
   .app-table .table-toolbar .personal-controls .toolbar-icon { height: 38px; padding-top: 0; }
   .app-table .table-toolbar .personal-controls .toolbar-icon svg { width: 24px; height: 24px; }
 }
+
+@media (min-width: 1024px) {
+  /* Keep the shared pause control above the upper-right occupied seat. */
+  .app-table .table-toolbar .pause-toggle {
+    top: 4cqw; width: 2.5cqw; height: 2.5cqw; min-height: 0; padding: .5cqw;
+  }
+}
