@@ -2,6 +2,10 @@
 .vscode
 .artifacts/
 
+# Local environment files
+/.env
+/frontend/.env
+
 # Local PokerNow reference recordings and derived frames
 /references/pokernow/*
 !/references/pokernow/README.md
