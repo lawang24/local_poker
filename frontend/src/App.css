@@ -863,11 +863,15 @@ button.nameplate:hover, button.nameplate:focus-visible { border-color: #ddd; }
 .seat-speech span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .table-seat:has(.seat-speech) { z-index: 5; }
 .table-seat:is([data-seat="6"],[data-seat="7"],[data-seat="8"],[data-seat="9"]) .seat-speech { left: auto; right: 0; }
-.table-seat:is([data-seat="6"],[data-seat="7"],[data-seat="8"],[data-seat="9"]) .seat-speech::after { left: auto; right: 12px; }
+.table-seat:is([data-seat="6"],[data-seat="7"],[data-seat="8"],[data-seat="9"]) .seat-speech::after,
+.seat-speech-layer:is([data-seat="6"],[data-seat="7"],[data-seat="8"],[data-seat="9"]) .seat-speech::after { left: auto; right: 12px; }
 .table-seat[data-seat="1"] .seat-speech {
   bottom: 0; left: calc(100% + 7px); max-width: min(150px, calc(50cqw - 50% - 12px));
 }
-.table-seat[data-seat="1"] .seat-speech::after { left: -4px; bottom: 10px; }
+.table-seat[data-seat="1"] .seat-speech::after,
+.seat-speech-layer[data-seat="1"] .seat-speech::after { left: -4px; bottom: 10px; }
+.seat-speech-anchor { visibility: hidden; }
+.seat-speech-layer { position: fixed; inset: 0; z-index: 13; pointer-events: none; }
 
 .typing-panel {
   position: fixed; inset: auto; left: 50%;

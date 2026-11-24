@@ -51,6 +51,10 @@ two-column grid beneath each name. New message or the M key opens an input above
 1024px, Chat opens a bottom sheet. Enter sends and keeps the transcript open. Tapping the shaded table or pressing Escape dismisses the sheet. Both layouts group consecutive messages by sender and display the last message’s local time when available. Closing without sending preserves the draft. A live chat
 appears at its sender’s seat for six seconds; another message from the same player
 replaces it. Long messages are abbreviated in the bubble and remain complete in chat.
+[SeatSpeech.tsx](../../frontend/src/SeatSpeech.tsx) measures the bubble at its seat
+and portals its visible copy above the toolbar, outside the table's stacking
+context. The overlay ignores pointer input, stays below native modal dialogs,
+and follows viewport and table resizing without moving the seats.
 [TableToolbar.tsx](../../frontend/src/TableToolbar.tsx) owns a compact Options button,
 a visible Leave seat button and Away / I’m back controls in a personal-action group,
 with Pause / Resume separately in the upper-right corner. The personal group is

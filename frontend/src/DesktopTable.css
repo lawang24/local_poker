@@ -47,7 +47,8 @@
   .app-table .table-seat:is([data-seat="5"], [data-seat="6"]) .seat-speech {
     top: calc(100% + 6px); bottom: auto;
   }
-  .app-table .table-seat:is([data-seat="5"], [data-seat="6"]) .seat-speech::after {
+  .app-table .table-seat:is([data-seat="5"], [data-seat="6"]) .seat-speech::after,
+  .seat-speech-layer:is([data-seat="5"], [data-seat="6"]) .seat-speech::after {
     top: -4px; bottom: auto;
   }
   .app-table .empty-cards {

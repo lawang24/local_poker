@@ -6,6 +6,7 @@ import { RunoutBoard } from "./RunoutBoard";
 import type { Player, State } from "./types";
 import { TurnTimer } from "./TurnTimer";
 import { payoutBalance } from "./payoutDisplay";
+import { SeatSpeech } from "./SeatSpeech";
 
 // Percentage anchors run clockwise from seat one. All viewers share the
 // same seat order on the desktop oval and the two portrait rails.
@@ -60,7 +61,7 @@ function Seat({ player, state, index, select, speech }: {
     data-seat={index + 1}
     aria-label={`${player.name}${mine ? ", you" : ""}, ${formatAmount(player.stack, state.cents)} chips${winner ? ", winner" : ""}${label ? `, ${label}` : ""}`}
   >
-    {speech && <div className="seat-speech"><span>{speech}</span></div>}
+    {speech && <SeatSpeech text={speech} seat={index + 1} />}
     {index === 0 && state.running && player.committed > 0 && <div className="table-bet south-bet" aria-label={`${player.name} bet ${formatAmount(player.committed, state.cents)}`}>{formatAmount(player.committed, state.cents)}</div>}
     <div className="seat-body">
       {waiting && <span className="seat-waiting" aria-hidden="true">
