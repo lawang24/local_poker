@@ -4,7 +4,6 @@ import "./TableChat.css";
 
 type Message = State["chat_history"][number];
 const clock = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
-const club = <span className="chat-club">Create a private<br /><a href="https://www.pokernow.com/clubs-landing" target="_blank" rel="noreferrer">Poker Club</a></span>;
 
 function transcriptRows(messages: Message[], selfId: string) {
   const groups: Message[][] = [];
@@ -75,7 +74,7 @@ export function TableChat({ messages, selfId, ready, send, dialog, trigger, open
   return <>
     <aside className="desktop-chat" aria-label="Table chat and log">
       <div className="chat-links" hidden={expanded}><button ref={logButton} aria-keyshortcuts="L" className="log-button" aria-haspopup="dialog" aria-controls="session-log"
-        onClick={openLog}>Log / Ledger<small aria-hidden="true">L</small></button>{club}</div>
+        onClick={openLog}>Log / Ledger<small aria-hidden="true">L</small></button></div>
       <div className={'chat-strip' + (expanded ? ' expanded' : '')}>
         <div className="recent-chat" ref={dock} role="log" aria-label="Recent chat messages">
           {rows.length ? rows : <div className="quiet-chat">It's a bit quiet here.<br />Click on the balloon and send a Message!</div>}
@@ -100,7 +99,6 @@ export function TableChat({ messages, selfId, ready, send, dialog, trigger, open
       onClick={e => { if (e.target === e.currentTarget && e.clientY < e.currentTarget.getBoundingClientRect().top) e.currentTarget.close(); }}
       onToggle={e => { if (e.newState === "open" && transcript.current) transcript.current.scrollTop = transcript.current.scrollHeight; }}
       onClose={() => trigger.current?.focus({ preventScroll: true })}>
-      {club}
       <div className="phone-transcript" ref={transcript} role="log" aria-label="Chat messages">
         {rows.length ? rows : <div className="quiet-chat">It's a bit quiet here.</div>}
       </div>

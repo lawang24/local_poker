@@ -1,7 +1,4 @@
-.chat-club { font-weight: 400; line-height: 1.2; color: #bbb; }
-.chat-club a { color: #eee; text-decoration: underline; }
 .chat-links { font-family: Mulish, sans-serif; display: flex; align-items: center; gap: .6cqw; }
-.chat-links .chat-club { font-size: 1cqw; }
 .quiet-chat { min-height: 100%; align-content: center; text-align: center; color: #888; font-size: .9em; }
 .chat-row { display: grid; grid-template-columns: 18% minmax(0, 1fr); align-items: end; margin-bottom: 2px; gap: 2px; color: #eee; }
 .chat-author, .chat-body { padding: .2em .35em; background: #292829; }
@@ -14,7 +11,6 @@
 .chat-dialog.typing-panel { inset: calc(var(--typing-top, 0px) + var(--typing-height, 100dvh)) auto auto 0; transform: translateY(-100%); width: 100%; max-width: none; height: min(113vw, 65dvh, var(--typing-height, 100dvh)); max-height: var(--typing-height, 100dvh); border: 0; padding: 0; border-radius: 6px 6px 0 0; overflow: hidden; background: #302f30; color: #eee; font: 400 clamp(14px, 4vw, 18px)/1.25 Mulish, sans-serif; }
 .chat-dialog[open] { display: flex; flex-direction: column; }
 .chat-dialog::backdrop { background: #0009; }
-.chat-dialog .chat-club { padding: .43em; text-align: center; background: #252425; border-bottom: 1px solid #444; font-size: .94em; }
 .phone-transcript { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: .3em; }
 .phone-transcript .chat-row { grid-template-columns: 20.5% minmax(0,1fr); }
 .chat-dialog form { margin: 0; flex: none; }
