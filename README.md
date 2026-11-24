@@ -188,9 +188,13 @@ runs lint, and supplies the production `VITE_WS_URL` and Pages base path at buil
 time. The usual project path is `/local_poker/`; the path comes from the Pages
 configuration so a custom domain can use `/` instead.
 
-Netlify continues to use its existing build configuration (`frontend`,
-`npm run build`, output `dist`) and production `VITE_WS_URL`. Its default base
-path remains `/`. No built files need to be committed, and no additional backend
+Netlify's production branch is `main`. [netlify.toml](netlify.toml) defines its
+build configuration (`frontend`, `npm run build`, output `dist`) and production
+`VITE_WS_URL`. Every push to `main` builds, including changes outside `frontend/`;
+other branches are skipped. Its default base path remains `/`.
+Work directly on `main`, integrate any newer remote commits, and push completed
+changes to publish both sites. Check both deployment results after pushing.
+No built files need to be committed, and no additional backend
 is created. Both sites join the same production table. Player identities and
 preferences are stored per browser origin, so switching between the sites does
 not restore the same player identity.
